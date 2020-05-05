@@ -1,0 +1,21 @@
+[package]
+name = "map_service"
+version = "0.1.0"
+authors = ["Zettroke <skorostnoy2000@yandex.ru>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+xml-rs = "0.8.3"
+flate2 = "1.0.14"
+quick-xml = "0.18.1"
+
+[lib.release]
+name = "map_service"
+#crate-type = ["cdylib"] # Uncomment to build as Python module
+
+[dependencies.pyo3]
+git = "https://github.com/PyO3/pyo3.git"
+branch = "master"
+features = ["extension-module"]
