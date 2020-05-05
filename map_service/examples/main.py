@@ -1,3 +1,8 @@
-from map_service import sum_as_string
+from map_service import MapService
+import time
 
-print("sum_as_string:", sum_as_string(1, 1337))
+st = time.clock()
+mp = MapService()
+mp.load("Moscow.osm.gz")
+en = time.clock()
+print("aa:", en - st)

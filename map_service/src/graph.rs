@@ -4,12 +4,19 @@ use std::cell::UnsafeCell;
 use std::fs::read;
 use crate::osm_map::OsmNode;
 
-struct RoadGraph {
+pub struct RoadGraph {
     nodes: Vec<Node>,
     /// OSM'овские id нод. Прямое соответствие
     osm_nodes_ids: Vec<u64>
 }
+
 impl RoadGraph {
+    pub fn new() -> Self {
+        Self {
+            nodes: Vec::new(),
+            osm_nodes_ids: Vec::new()
+        }
+    }
     pub fn get_node(&self, id: NodeId) -> &Node {
         self.nodes.get(id.0).unwrap()
     }
@@ -45,15 +52,15 @@ impl RoadGraph {
 }
 
 #[derive(Copy, Clone)]
-struct NodeId(usize);
+pub struct NodeId(usize);
 
-struct Node {
+pub struct Node {
     nodes: Vec<NodeLink>,
     eta: u32,
     kind: NodeKind
 }
 
-enum NodeKind {
+pub enum NodeKind {
     Plain,
     Car {
         eta: u32,

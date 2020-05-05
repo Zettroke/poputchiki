@@ -4,15 +4,17 @@ use flate2::bufread::GzDecoder;
 use std::io::{BufReader, Read};
 use std::fs::File;
 use std::collections::HashMap;
+use map_service::graph::RoadGraph;
 
 
 fn main() {
     let mut ms = MapService {
         nodes: Vec::new(),
-        ways: HashMap::new()
+        ways: HashMap::new(),
+        graph: RoadGraph::new()
     };
     let st = std::time::Instant::now();
-    ms.load("Moscow.osm.gz".to_string());
+    ms.load("Moscow.osm".to_string());
     println!("{}s", (std::time::Instant::now() - st).as_secs_f64());
 
 

@@ -5,13 +5,12 @@ use crate::osm_map::{OsmNode, OsmWay};
 use std::fs::File;
 use std::io::BufReader;
 use flate2::bufread::GzDecoder;
-use xml::EventReader;
-use xml::reader::XmlEvent;
 use quick_xml::Reader;
 use quick_xml::events::{Event, BytesStart};
 use std::str::FromStr;
 use std::borrow::BorrowMut;
 use crate::utils::{u64_parse, f64_parse};
+use crate::graph::RoadGraph;
 
 pub mod osm_map;
 pub mod graph;
@@ -20,7 +19,8 @@ pub mod utils;
 #[pyclass]
 pub struct MapService {
     pub nodes: Vec<OsmNode>,
-    pub ways: HashMap<u64, OsmWay>
+    pub ways: HashMap<u64, OsmWay>,
+    pub graph: RoadGraph
 }
 
 #[pymethods]
@@ -29,17 +29,19 @@ impl MapService {
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
-            ways: HashMap::new()
+            ways: HashMap::new(),
+            graph: RoadGraph::new()
         }
     }
 
     pub fn load(&mut self, path: String) {
-        let mut reader = BufReader::new(GzDecoder::new(BufReader::new(File::open(path).unwrap())));
+        // let mut reader = BufReader::new(GzDecoder::new(BufReader::new(File::open(path).unwrap())));
+        let mut reader = BufReader::new(File::open(path).unwrap());
         let mut event_reader = Reader::from_reader(reader);
         let mut buf = Vec::new();
         let mut nodes = HashMap::new();
         let mut ways = HashMap::new();
-        let mut current_way: Option<OsmWay> = None; // OsmWay::new(std::u64::MAX);
+        let mut current_way: Option<OsmWay> = None;
         loop {
             match event_reader.read_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
@@ -117,7 +119,6 @@ fn handle_node(e: &BytesStart) -> OsmNode {
 
     return OsmNode::new(id, lat, lon);
 }
-
 
 /// MapService responsible for working with map data and paths.
 #[pymodule]
