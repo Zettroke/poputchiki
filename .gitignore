@@ -1,0 +1,6 @@
+*.pyd
+**target**
+*.osm
+*.gz
+**.idea**
+*.pyc
