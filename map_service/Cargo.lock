@@ -169,7 +169,7 @@ dependencies = [
 [[package]]
 name = "pyo3"
 version = "0.9.2"
-source = "git+https://github.com/PyO3/pyo3.git#626268d28aeef57c04b45bdc8140966965742d5f#626268d28aeef57c04b45bdc8140966965742d5f"
+source = "git+https://github.com/PyO3/pyo3.git#626268d28aeef57c04b45bdc8140966965742d5f#ab374b40daa0a85a7db1b053a0e9e045c593f303"
 dependencies = [
  "indoc",
  "inventory",
@@ -183,7 +183,7 @@ dependencies = [
 [[package]]
 name = "pyo3-derive-backend"
 version = "0.9.2"
-source = "git+https://github.com/PyO3/pyo3.git#626268d28aeef57c04b45bdc8140966965742d5f#626268d28aeef57c04b45bdc8140966965742d5f"
+source = "git+https://github.com/PyO3/pyo3.git#626268d28aeef57c04b45bdc8140966965742d5f#ab374b40daa0a85a7db1b053a0e9e045c593f303"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -193,7 +193,7 @@ dependencies = [
 [[package]]
 name = "pyo3cls"
 version = "0.9.2"
-source = "git+https://github.com/PyO3/pyo3.git#626268d28aeef57c04b45bdc8140966965742d5f#626268d28aeef57c04b45bdc8140966965742d5f"
+source = "git+https://github.com/PyO3/pyo3.git#626268d28aeef57c04b45bdc8140966965742d5f#ab374b40daa0a85a7db1b053a0e9e045c593f303"
 dependencies = [
  "pyo3-derive-backend",
  "quote",
