@@ -27,9 +27,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+LOGIN_REDIRECT_URL = '/main'
 
 # Application definition
-
 INSTALLED_APPS = [
     'web_map.apps.WebMapConfig',
     'django.contrib.auth',
@@ -79,7 +79,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'poputchiki',
         'USER': 'postgres',
-        'PASSWORD': 'postgres'
+        'PASSWORD': 'poputchiki'
     }
 }
 

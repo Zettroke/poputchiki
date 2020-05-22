@@ -1,0 +1,71 @@
+<html>
+<head>
+<link rel="shortcut icon" href="C:\Users\79154\Downloads\travel_icon_142598.ico" type="image/x-icon">
+<title>Registration</title>
+
+<style>
+form.my_form
+  {
+    margin-left:190px;
+	}
+
+   button.round {
+    background: #f2f6f8;
+    border: 1px solid #7a7b7e;
+    height: 35px;
+	width:150px;
+    border-radius: 30px;
+    / *font-weight: bold;/ *
+   }
+   
+   button.round2 {
+    background: #f2f6f8;
+    border: 1px solid #7a7b7e;
+    height: 35px;
+	width:150px;
+    border-radius: 30px;
+    / *font-weight: bold;/ *
+   }
+
+div.move{
+margin-left:190px;
+}
+
+body {
+background: #000 url(https://images.hdqwalls.com/download/dark-blue-green-gradient-4k-i4-3840x2400.jpg);
+color: #fff; 
+}
+</style>
+</head>
+<body>
+    <h1>Registration</h1>
+	<p>{{message}}</p>
+    <font size="3" color="lightblue">
+    <form>
+    <div style="width: 300px;border: 1px solid;padding: 20px;border-radius: 8px;">
+    <p>
+        Input name:<br><input  type="[button|submit]" name="name" value="" size="20" autofocus autocapitalize="none" autocomplete="username" maxlength="150" required id="id_username"  maxlength="50">
+    </p>
+    <p>
+        Input e-mail:<br><input type="[button|submit]" name="email" value="" size="20"      maxlength="50">
+    </p>
+    <p>
+        Input password:<br><input type="password" name="password1" autocomplete="current-password" required id="id_password" value="" size="20" maxlength="50">
+    </p>
+    <p>
+        Repeat password:<br><input type="password" name="password2" autocomplete="current-password" required id="id_password" value="" size="20" maxlength="50">
+    </p>
+</div>
+<br>
+<div class = "move">  
+<button class = "round"; type="submit";>Register</button>
+</div>
+</form>
+</font>
+<br>
+    <form class = "my_form"; action="/accounts/login"; >
+	    <button class="round2">Go to Login</button>
+    </form>
+
+</body>
+</html>
