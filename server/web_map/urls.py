@@ -7,5 +7,6 @@ urlpatterns = [
     path('map', views.map_view, name='map'),
     path('main', views.main, name='main'),
     path('registration', views.registratio, name='registration'),
-    #path('admin/', admin.site.urls),
+    path('path_publish', views.path_publish, name='path_publish'),
+    path('build_path', views.build_path, name='build_path'),
 ]
