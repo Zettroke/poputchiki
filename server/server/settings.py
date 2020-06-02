@@ -27,9 +27,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+LOGIN_REDIRECT_URL = '/main'
 
 # Application definition
-
 INSTALLED_APPS = [
     'web_map.apps.WebMapConfig',
     'django.contrib.auth',
