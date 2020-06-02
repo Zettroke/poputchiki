@@ -12,8 +12,8 @@ fn main() {
         graph: RoadGraph::new()
     };
     let st = std::time::Instant::now();
-    // ms.load("map_smol.osm.gz".to_string());
-    ms.load("Moscow.osm.gz".to_string());
+    ms.load("map_smol.osm.gz".to_string());
+    // ms.load("Moscow.osm.gz".to_string());
     println!("{}s", (std::time::Instant::now() - st).as_secs_f64());
 
 

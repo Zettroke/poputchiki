@@ -1,5 +1,8 @@
-use std::collections::VecDeque;
+use std::collections::{VecDeque, BinaryHeap, HashMap};
 use serde::{Serialize, Deserialize};
+use std::cmp::Ordering;
+use crate::distance;
+use std::ops::Deref;
 
 #[derive(Serialize)]
 pub struct RoadGraph {
@@ -32,47 +35,97 @@ impl RoadGraph {
     let n1 = self.node_mut(n1_id);
     n1.nodes.push(NodeLink {
       node: n2_id,
-      time_len: len
+      len: len
     })
   }
   pub fn connect_two_way(&mut self, n1_id: NodeId, n2_id: NodeId, len: u32) {
     let n1 = self.node_mut(n1_id);
     n1.nodes.push(NodeLink {
       node: n2_id,
-      time_len: len
+      len: len
     });
     let n2 = self.node_mut(n2_id);
     n2.nodes.push(NodeLink {
       node: n1_id,
-      time_len: len
+      len: len
     });
   }
 
-  pub fn shortest_path(&mut self, start: NodeId, end: NodeId) {
-    let mut queue = VecDeque::new();
+  pub fn osm_id(&self, id: NodeId) -> u64 {
+    *self.osm_nodes_ids.get(id.0).unwrap()
+  }
+
+
+  pub fn shortest_path(&mut self, start: NodeId, end: NodeId) -> Vec<u64> {
+    let mut queue = BinaryHeap::new();
     self.node_mut(start).eta = 0;
-    queue.push_back(start);
-    while let Some(node_id) = queue.pop_back() {
-      let node = self.node(node_id);
+    let start_node = self.node(start);
+    let end_node = self.node(end);
+    queue.push(State { cost: start_node.eta + distance(start_node, end_node), node: start });
+    while let Some(state) = queue.pop() {
+      if state.node == end {
+        println!("dist = {}", self.node(state.node).eta);
+        break;
+      }
+      let node = self.node(state.node);
       for link in node.nodes.iter() {
         let next_node = self.node_mut(link.node);
-        if node.eta + link.time_len < next_node.eta {
-          next_node.eta = node.eta + link.time_len;
-          queue.push_back(link.node);
+        if next_node.eta > node.eta + link.len {
+          next_node.eta = node.eta + link.len;
+          let dist = distance(next_node, end_node);
+          queue.push(State { cost: next_node.eta + dist, node: link.node });
         }
       }
     }
+    let mut path = vec![self.osm_id(end)];
+
+    let mut curr_node = end_node;
+    while curr_node.eta != 0 {
+      for link in curr_node.nodes.iter() {
+        let n = self.node(link.node);
+        if n.eta == curr_node.eta.overflowing_sub(link.len).0 {
+          curr_node = n;
+          path.push(self.osm_id(link.node));
+        }
+      }
+    }
+    path.reverse();
+    return path;
   }
 }
 
-#[derive(Copy, Clone, Serialize, Debug)]
+struct State {
+  cost: u32,
+  node: NodeId
+}
+
+impl Ord for State {
+  fn cmp(&self, other: &Self) -> Ordering {
+    self.cost.cmp(&other.cost).reverse()
+  }
+}
+
+impl Eq for State {}
+impl PartialEq for State {
+  fn eq(&self, other: &Self) -> bool {
+    self.cost.eq(&other.cost)
+  }
+}
+impl PartialOrd for State {
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    self.cost.partial_cmp(&other.cost).map(|o| o.reverse())
+  }
+}
+#[derive(Copy, Clone, Serialize, Debug, PartialEq, Eq)]
 pub struct NodeId(usize);
 
 #[derive(Serialize)]
 pub struct Node {
   pub nodes: Vec<NodeLink>,
   pub eta: u32,
-  pub kind: NodeKind
+  pub kind: NodeKind,
+  pub lon: f32,
+  pub lat: f32
 }
 
 #[derive(Serialize)]
@@ -86,5 +139,5 @@ pub enum NodeKind {
 #[derive(Serialize)]
 pub struct NodeLink {
   node: NodeId,
-  time_len: u32,
+  len: u32,
 }

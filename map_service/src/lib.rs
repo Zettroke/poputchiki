@@ -14,6 +14,18 @@ pub mod osm_map;
 pub mod graph;
 pub mod utils;
 
+pub fn distance(n1: &Node, n2: &Node) -> u32 {
+  let lat1 = n1.lat.to_radians();
+  let lat2 = n2.lat.to_radians();
+  let dlat = (n2.lat - n1.lat).to_radians();
+  let dlon = (n2.lon - n2.lon).to_radians();
+
+  let a = (dlat/2.).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon/2.).sin();
+  let c = 2. * (a.sqrt()).atan2((1.-a).sqrt());
+
+  return (c * 6_371_302_00.0).round() as u32; // cm
+}
+
 #[pyclass]
 pub struct MapService {
   pub nodes: HashMap<u64, OsmNode>,
@@ -129,28 +141,28 @@ impl MapService {
       let id = self.graph.add_node(Node {
         nodes: Vec::new(),
         eta: u32::MAX,
-        kind: NodeKind::Plain
+        kind: NodeKind::Plain,
+        lat: node.lat as f32,
+        lon: node.lon as f32
       }, node.id);
       node_id_map.insert(node.id, id);
     }
 
-    let node_id = *node_id_map.get(&1722219969).expect("Cant find node");
-
+    let start_node_id = *node_id_map.get(&1722219969).expect("Cant find node");
+    let end_node_id = *node_id_map.get(&992594049).expect("Cant find node");
     for way in self.ways.values() {
       let mut prev_node_id = *node_id_map.get(&way.nodes[0].id).unwrap();
       for node in &way.nodes[1..] {
         let curr_node_id = *node_id_map.get(&node.id).unwrap();
-        self.graph.connect_two_way(prev_node_id, curr_node_id, 1);
+        self.graph.connect_two_way(prev_node_id, curr_node_id, distance(self.graph.node(prev_node_id), self.graph.node(curr_node_id)));
         prev_node_id = curr_node_id;
       }
     }
-    let vv = *node_id_map.get(&91326527).unwrap();
-    let noddde = self.graph.node(node_id);
-    println!("{:?}", vv);
     let st = std::time::Instant::now();
-    self.graph.shortest_path(node_id, node_id);
+    let path = self.graph.shortest_path(start_node_id, end_node_id);
     let en = std::time::Instant::now();
     println!("shortest_path: {}s", (en - st).as_secs_f64());
+    println!("shortest_path: {:?}", path);
     let mut m = HashMap::new();
     for (i, n) in self.graph.nodes.iter().enumerate() {
       m.insert(*self.graph.osm_nodes_ids.get(i).unwrap(), n);
