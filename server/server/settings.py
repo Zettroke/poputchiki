@@ -27,9 +27,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+LOGIN_REDIRECT_URL = '/main'
 
 # Application definition
-
 INSTALLED_APPS = [
     'web_map.apps.WebMapConfig',
     'django.contrib.auth',
@@ -76,10 +76,8 @@ WSGI_APPLICATION = 'server.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'poputchiki',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres'
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'database.db'
     }
 }
 
