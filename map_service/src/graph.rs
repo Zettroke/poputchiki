@@ -64,6 +64,7 @@ impl RoadGraph {
     queue.push(State { cost: start_node.eta + distance(start_node, end_node), node: start });
     while let Some(state) = queue.pop() {
       if state.node == end {
+        println!("queue len = {}", queue.len());
         println!("dist = {}", self.node(state.node).eta);
         break;
       }
@@ -80,14 +81,17 @@ impl RoadGraph {
     let mut path = vec![self.osm_id(end)];
 
     let mut curr_node = end_node;
-    while curr_node.eta != 0 {
+    'main: while curr_node.eta != 0 {
       for link in curr_node.nodes.iter() {
         let n = self.node(link.node);
         if n.eta == curr_node.eta.overflowing_sub(link.len).0 {
           curr_node = n;
           path.push(self.osm_id(link.node));
+          continue 'main;
         }
       }
+      println!("Couldn't find path");
+      break;
     }
     path.reverse();
     return path;
@@ -124,8 +128,8 @@ pub struct Node {
   pub nodes: Vec<NodeLink>,
   pub eta: u32,
   pub kind: NodeKind,
-  pub lon: f32,
-  pub lat: f32
+  pub lon: f64,
+  pub lat: f64
 }
 
 #[derive(Serialize)]

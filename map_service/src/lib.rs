@@ -27,6 +27,29 @@ pub fn distance(n1: &Node, n2: &Node) -> u32 {
 }
 
 #[pyclass]
+#[derive(Debug)]
+pub struct MapPoint {
+  #[pyo3(get)]
+  pub id: u64,
+  #[pyo3(get)]
+  pub lat: f64,
+  #[pyo3(get)]
+  pub lon: f64
+}
+
+#[pymethods]
+impl MapPoint {
+  #[new]
+  pub fn new(lat: f64, lon: f64) -> Self {
+    Self {
+      id: 0,
+      lat,
+      lon
+    }
+  }
+}
+
+#[pyclass]
 pub struct MapService {
   pub nodes: HashMap<u64, OsmNode>,
   pub ways: HashMap<u64, OsmWay>,
@@ -142,33 +165,65 @@ impl MapService {
         nodes: Vec::new(),
         eta: u32::MAX,
         kind: NodeKind::Plain,
-        lat: node.lat as f32,
-        lon: node.lon as f32
+        lat: node.lat,
+        lon: node.lon
       }, node.id);
       node_id_map.insert(node.id, id);
     }
 
-    let start_node_id = *node_id_map.get(&1722219969).expect("Cant find node");
-    let end_node_id = *node_id_map.get(&992594049).expect("Cant find node");
+    // let start_node_id = *node_id_map.get(&1722219969).expect("Cant find node");
+    // let end_node_id = *node_id_map.get(&1404840367).expect("Cant find node");
     for way in self.ways.values() {
       let mut prev_node_id = *node_id_map.get(&way.nodes[0].id).unwrap();
       for node in &way.nodes[1..] {
         let curr_node_id = *node_id_map.get(&node.id).unwrap();
-        self.graph.connect_two_way(prev_node_id, curr_node_id, distance(self.graph.node(prev_node_id), self.graph.node(curr_node_id)));
+        self.graph.connect_two_way(
+          prev_node_id,
+          curr_node_id,
+          distance(self.graph.node(prev_node_id), self.graph.node(curr_node_id))
+        );
         prev_node_id = curr_node_id;
       }
     }
-    let st = std::time::Instant::now();
-    let path = self.graph.shortest_path(start_node_id, end_node_id);
-    let en = std::time::Instant::now();
-    println!("shortest_path: {}s", (en - st).as_secs_f64());
-    println!("shortest_path: {:?}", path);
-    let mut m = HashMap::new();
-    for (i, n) in self.graph.nodes.iter().enumerate() {
-      m.insert(*self.graph.osm_nodes_ids.get(i).unwrap(), n);
+    // let st = std::time::Instant::now();
+    // let path = self.graph.shortest_path(start_node_id, end_node_id);
+    // let en = std::time::Instant::now();
+    // println!("shortest_path: {}s", (en - st).as_secs_f64());
+    // println!("shortest_path: {:?}", path);
+    // let mut m = HashMap::new();
+    // for (i, n) in self.graph.nodes.iter().enumerate() {
+    //   m.insert(*self.graph.osm_nodes_ids.get(i).unwrap(), n);
+    // }
+    // let res = serde_json::to_string_pretty(&m).unwrap();
+    // File::create("graph.json").unwrap().write_all(res.as_bytes()).unwrap();
+  }
+
+  pub fn build_path(&mut self, points: Vec<PyRef<MapPoint>>) -> Vec<MapPoint> {
+    #[derive(Clone)]
+    struct ClosestNode {
+      id: u64,
+      dist: f64
+    };
+    let mut closest = vec![ClosestNode { id: 0, dist: f64::MAX }; points.len()];
+    for (k, v) in self.nodes.iter() {
+      for (ind, point) in points.iter().enumerate() {
+        let mut cl = &mut closest[ind];
+        let d = (v.lat - point.lat).powi(2) + (v.lon - point.lon).powi(2);
+        if cl.dist > d {
+          cl.dist = d;
+          cl.id = *k;
+        }
+      }
     }
-    let res = serde_json::to_string_pretty(&m).unwrap();
-    File::create("graph.json").unwrap().write_all(res.as_bytes()).unwrap();
+
+    return closest.into_iter().map(|cl| {
+      let node = self.nodes.get(&cl.id).unwrap();
+      MapPoint {
+        id: node.id,
+        lat: node.lat,
+        lon: node.lon
+      }
+    }).collect();
   }
 }
 
@@ -200,6 +255,7 @@ fn handle_node(e: &BytesStart) -> OsmNode {
 fn map_service(_py: Python, m: &PyModule) -> PyResult<()> {
   // m.add_wrapped(wrap_pyfunction!(sum_as_string))?;
   m.add_class::<MapService>()?;
+  m.add_class::<MapPoint>()?;
   Ok(())
 }
 
