@@ -1,0 +1,61 @@
+
+{% block content %}  
+  
+<html>
+  <head>
+    <link rel="shortcut icon" href="C:\Users\79154\Downloads\travel_icon_142598.ico" type="image/x-icon">
+    <title>login</title>
+    <style>
+
+      button.my_button 
+	  {
+        background: #f2f6f8;
+        border: 1px solid #7a7b7e;
+        height: 25px;
+        / *font-weight: bold;/ *
+      }
+	   
+	  body 
+	  {
+        background: #000 url(https://images.hdqwalls.com/download/dark-blue-green-gradient-4k-i4-3840x2400.jpg);
+        color: #fff; 
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Enter to account</h1>
+    <div class = "my_div">
+      <form method="post" >
+        {% csrf_token %}
+        <table>
+          <tr>
+            <td>{{ form.username.label_tag }}</td>
+            <td>{{ form.username }}</td>
+          </tr>
+          <tr>
+            <td>{{ form.password.label_tag }}</td>
+            <td>{{ form.password }}</td>
+          </tr>
+        </table>
+        <input type="submit" value="login" />
+        <input type="hidden" name="next" value="{{ next }}" />
+      </form>
+    </div>
+	{% if form.errors %}
+      <p>Your username and password didn't match. Please try again.</p>
+    {% endif %}
+  
+    {% if next %}
+      {% if user.is_authenticated %}
+        <p>Your account doesn't have access to this page. To proceed,
+        please login with an account that has access.</p>
+      {% else %}
+        <p>Please login to see this page.</p>
+      {% endif %}
+    {% endif %}
+	<a href="/registration"> Need registration? Click here!</a>
+
+  </body>
+</html>
+  
+{% endblock %}

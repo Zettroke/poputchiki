@@ -4,3 +4,4 @@
 *.gz
 **.idea**
 *.pyc
+*.db
