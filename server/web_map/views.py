@@ -1,4 +1,4 @@
-from django.http import HttpResponse, HttpRequest, HttpResponseBadRequest
+from django.http import HttpResponse, HttpRequest, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -12,10 +12,10 @@ def index(req):
 
 
 def map_view(req):
-    return render(req, 'web_map/map_view.html', {'soma_data': 'kappa'})
+    return render(req, 'map_view.html', {'soma_data': 'kappa'})
 
 
-def registratio(req):
+def registratioт(req):
     name = req.GET.get("name", "")
     email = req.GET.get("email", "")
     pas1 = req.GET.get("password1", "")
