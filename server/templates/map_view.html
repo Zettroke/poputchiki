@@ -22,8 +22,6 @@
 
       <script>
 
-         // Creating map options
-
          var mapOptions = {
 
             center: [55.75222,37.6155600],
@@ -31,22 +29,10 @@
             zoom: 10
 
          }
-
         
-
-         // Creating a map object
-
          var map = new L.map('map', mapOptions);
 
-        
-
-         // Creating a Layer object
-
          var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-
-        
-
-         // Adding layer to the map
 
          map.addLayer(layer);
 
