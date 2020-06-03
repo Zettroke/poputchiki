@@ -17,10 +17,12 @@ pub mod utils;
 pub fn distance(n1: &Node, n2: &Node) -> u32 {
   let lat1 = n1.lat.to_radians();
   let lat2 = n2.lat.to_radians();
-  let dlat = (n2.lat - n1.lat).to_radians();
-  let dlon = (n2.lon - n2.lon).to_radians();
+  let lon1 = n1.lon.to_radians();
+  let lon2 = n2.lon.to_radians();
+  let dlat = lat2 - lat1;
+  let dlon = lon2 - lon1;
 
-  let a = (dlat/2.).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon/2.).sin();
+  let a = (dlat/2.).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon/2.).sin().powi(2);
   let c = 2. * (a.sqrt()).atan2((1.-a).sqrt());
 
   return (c * 6_371_302_00.0).round() as u32; // cm
@@ -45,6 +47,16 @@ impl MapPoint {
       id: 0,
       lat,
       lon
+    }
+  }
+}
+
+impl From<&OsmNode> for MapPoint {
+  fn from(n: &OsmNode) -> Self {
+    MapPoint {
+      id: n.id,
+      lat: n.lat,
+      lon: n.lon
     }
   }
 }
@@ -171,8 +183,8 @@ impl MapService {
       node_id_map.insert(node.id, id);
     }
 
-    // let start_node_id = *node_id_map.get(&1722219969).expect("Cant find node");
-    // let end_node_id = *node_id_map.get(&1404840367).expect("Cant find node");
+    let start_node_id = *node_id_map.get(&1462108003).expect("Cant find node");
+    let end_node_id = *node_id_map.get(&1152366622).expect("Cant find node");
     for way in self.ways.values() {
       let mut prev_node_id = *node_id_map.get(&way.nodes[0].id).unwrap();
       for node in &way.nodes[1..] {
@@ -185,17 +197,9 @@ impl MapService {
         prev_node_id = curr_node_id;
       }
     }
-    // let st = std::time::Instant::now();
-    // let path = self.graph.shortest_path(start_node_id, end_node_id);
-    // let en = std::time::Instant::now();
-    // println!("shortest_path: {}s", (en - st).as_secs_f64());
-    // println!("shortest_path: {:?}", path);
-    // let mut m = HashMap::new();
-    // for (i, n) in self.graph.nodes.iter().enumerate() {
-    //   m.insert(*self.graph.osm_nodes_ids.get(i).unwrap(), n);
-    // }
-    // let res = serde_json::to_string_pretty(&m).unwrap();
-    // File::create("graph.json").unwrap().write_all(res.as_bytes()).unwrap();
+
+    let res = self.graph.shortest_path(start_node_id, end_node_id);
+    println!("{:#?}", res);
   }
 
   pub fn build_path(&mut self, points: Vec<PyRef<MapPoint>>) -> Vec<MapPoint> {
@@ -204,6 +208,7 @@ impl MapService {
       id: u64,
       dist: f64
     };
+    let st = std::time::Instant::now();
     let mut closest = vec![ClosestNode { id: 0, dist: f64::MAX }; points.len()];
     for (k, v) in self.nodes.iter() {
       for (ind, point) in points.iter().enumerate() {
@@ -216,14 +221,22 @@ impl MapService {
       }
     }
 
-    return closest.into_iter().map(|cl| {
-      let node = self.nodes.get(&cl.id).unwrap();
-      MapPoint {
-        id: node.id,
-        lat: node.lat,
-        lon: node.lon
-      }
-    }).collect();
+    let start_node_id = closest.get(0).unwrap().id;
+    let mut path = vec![MapPoint::from(self.nodes.get(&start_node_id).unwrap())];
+    let mut prev = self.graph.node_id_by_osm_id(start_node_id).unwrap();
+
+    for cl in closest.iter().skip(1) {
+      let curr = self.graph.node_id_by_osm_id(cl.id).unwrap();
+      path.extend(
+        self.graph.shortest_path(prev, curr).into_iter()
+          .map(|id| MapPoint::from(self.nodes.get(&id).unwrap()))
+          .skip(1)
+      );
+      prev = curr;
+    }
+    let en = std::time::Instant::now();
+    println!("Build path in {}s.", (en - st).as_secs_f64());
+    path
   }
 }
 

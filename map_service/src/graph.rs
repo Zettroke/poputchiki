@@ -55,6 +55,11 @@ impl RoadGraph {
     *self.osm_nodes_ids.get(id.0).unwrap()
   }
 
+  pub fn node_id_by_osm_id(&self, id: u64) -> Option<NodeId> {
+    self.osm_nodes_ids.iter()
+      .position(|osm_id| *osm_id == id)
+      .map(|id| NodeId(id))
+  }
 
   pub fn shortest_path(&mut self, start: NodeId, end: NodeId) -> Vec<u64> {
     let mut queue = BinaryHeap::new();
@@ -78,23 +83,27 @@ impl RoadGraph {
         }
       }
     }
-    let mut path = vec![self.osm_id(end)];
+    if end_node.eta == u32::MAX {
+      return  Vec::new();
+    } else {
+      let mut path = vec![self.osm_id(end)];
 
-    let mut curr_node = end_node;
-    'main: while curr_node.eta != 0 {
-      for link in curr_node.nodes.iter() {
-        let n = self.node(link.node);
-        if n.eta == curr_node.eta.overflowing_sub(link.len).0 {
-          curr_node = n;
-          path.push(self.osm_id(link.node));
-          continue 'main;
+      let mut curr_node = end_node;
+      'main: while curr_node.eta != 0 {
+        for link in curr_node.nodes.iter() {
+          let n = self.node(link.node);
+          if n.eta == curr_node.eta.overflowing_sub(link.len).0 {
+            curr_node = n;
+            path.push(self.osm_id(link.node));
+            continue 'main;
+          }
         }
+        println!("Couldn't find path");
+        break;
       }
-      println!("Couldn't find path");
-      break;
+      path.reverse();
+      return path;
     }
-    path.reverse();
-    return path;
   }
 }
 
