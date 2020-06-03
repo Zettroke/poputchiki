@@ -1,15 +1,10 @@
-</html>
-
 <!DOCTYPE html>
-
 <html>
 
    <head>
 
-      <title>Leaflet sample</title>
-
+      <title>your map</title>
       <link rel = "stylesheet" href = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
-
       <script src = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
 
    </head>
@@ -23,23 +18,63 @@
       <script>
 
          var mapOptions = {
-
             center: [55.75222,37.6155600],
-
             zoom: 10
-
          }
-        
          var map = new L.map('map', mapOptions);
-
          var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-
          map.addLayer(layer);
 
+
+
+
+         map.on("click", function(e){
+            onMapClick(e);
+         })
+         function onMapClick(e) {
+             if (loc1 == null) {
+                 loc1 = new L.marker(e.latlng, {draggable: 'true'});
+                 loc1.on('dragend', function(event) {
+                     //отправляем запрос маршрута
+                 });
+                 map.addLayer(loc1);
+             }
+             else if (loc2 == null) {
+                 loc2 = new L.marker(e.latlng, {draggable: 'true'});
+                 loc2.on('dragend', function(event) {
+                    //отправляем запрос марурута
+                 });
+                 map.addLayer(loc2);
+                 //отправляем запрос маршрута
+             }
+         }
+         ;
+         var polyline;
+
+          function sendPost() {
+            if (loc2 != null && loc1 != null) {
+              var p1 = loc1.getLatLng(),
+                    p2 = loc2.getLatLng();
+              $.post(
+                    //"/buildpath",
+                    {l1: p1.lat + ',' + p1.lng, l2: p2.lat + ',' + p2.lng},
+              function(data) {
+                if (data) {
+                    if (polyline) {
+                        map.removeLayer(polyline);
+                    }
+                    var points = data;
+                    polyline = new L.polyline(points, {color: 'red'});
+                    map.addLayer(polyline);
+                    map.fitBounds(polyline.getBounds());
+                }
+              },
+                    "json"
+                    );
+            }
+          }
       </script>
 
    </body>
-
-  
 
 </html>
