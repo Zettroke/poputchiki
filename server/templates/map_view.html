@@ -1,7 +1,45 @@
-{% extends 'base.html' %}
-{% block title %} Заголовок страницы {% endblock %}
-{% block head %} Всякие скрипты {% endblock %}
+</html>
 
-{% block content %}
-<p>{{ soma_data }}</p>
-{% endblock %}
+<!DOCTYPE html>
+
+<html>
+
+   <head>
+
+      <title>Leaflet sample</title>
+
+      <link rel = "stylesheet" href = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
+
+      <script src = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+
+   </head>
+
+ 
+
+   <body>
+
+      <div id = "map" style = "width: 900px; height: 580px"></div>
+
+      <script>
+
+         var mapOptions = {
+
+            center: [55.75222,37.6155600],
+
+            zoom: 10
+
+         }
+        
+         var map = new L.map('map', mapOptions);
+
+         var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+
+         map.addLayer(layer);
+
+      </script>
+
+   </body>
+
+  
+
+</html>
