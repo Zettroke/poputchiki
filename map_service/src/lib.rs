@@ -183,8 +183,6 @@ impl MapService {
       node_id_map.insert(node.id, id);
     }
 
-    let start_node_id = *node_id_map.get(&1462108003).expect("Cant find node");
-    let end_node_id = *node_id_map.get(&1152366622).expect("Cant find node");
     for way in self.ways.values() {
       let mut prev_node_id = *node_id_map.get(&way.nodes[0].id).unwrap();
       for node in &way.nodes[1..] {
@@ -197,9 +195,6 @@ impl MapService {
         prev_node_id = curr_node_id;
       }
     }
-
-    let res = self.graph.shortest_path(start_node_id, end_node_id);
-    println!("{:#?}", res);
   }
 
   pub fn build_path(&mut self, points: Vec<PyRef<MapPoint>>) -> Vec<MapPoint> {
