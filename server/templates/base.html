@@ -3,7 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}Poputchiki{% endblock title %}</title>
-
+    <script
+      src="https://code.jquery.com/jquery-3.5.1.js"
+      integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc="
+      crossorigin="anonymous"></script>
+    <script>
+        function postJsonQuery(url, data) {
+            return new Promise((resolve, reject) => {
+                $.ajax(url, {
+                    type: 'POST',
+                    contentType: 'application/json',
+                    dataType: 'json',
+                    data: typeof data !== 'string' ? JSON.stringify(data) : data,
+                    success: resp => resolve(resp),
+                    error: err => reject(err)
+                })
+            });
+        }
+    </script>
     {% block head %} {% endblock head %}
 </head>
 <body>

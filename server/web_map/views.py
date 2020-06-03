@@ -58,6 +58,6 @@ def build_path(req: HttpRequest):
     if req.method == 'POST':
         points = [MapPoint(v['lat'], v['lon']) for v in json.loads(req.body)]
         path = MapManager.get_service().build_path(points)
-        return HttpResponse(json.dumps([{'lat': p.lat, 'lon': p.lon} for p in path]))
+        return HttpResponse(json.dumps([p.to_json() for p in path]))
     return HttpResponseBadRequest()
 

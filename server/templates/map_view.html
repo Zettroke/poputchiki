@@ -1,45 +1,67 @@
-</html>
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
+{% block title %}
+   Publish path
+{% endblock %}
 
-<html>
+{% block head %}
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+{% endblock %}
+{% block content %}
 
-   <head>
+    <div id="map" style="width: 900px; height: 580px"></div>
 
-      <title>Leaflet sample</title>
+<script>
+    let mapOptions = {
+        center: [55.75222, 37.6155600],
+        zoom: 10
+    }
+    let map = new L.map('map', mapOptions);
+    let layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    map.addLayer(layer);
 
-      <link rel = "stylesheet" href = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
+    map.on("click", onMapClick);
 
-      <script src = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+    const markers = {};
+    let marker_id = 0;
+    function onMapClick(e) {
+        let id = marker_id++;
+        let marker = new L.marker(e.latlng, { draggable: true, title: id+1+'' });
+        marker.on('dragend', () => {
+            buildPath();
+        });
+        marker.bindPopup(L.popup().setContent(`
+            <button onclick="removeMarker(${id})">remove</button>
+        `))
+        map.addLayer(marker);
+        markers[id] = marker;
+        buildPath();
+    }
 
-   </head>
+    function removeMarker(id) {
+        map.removeLayer(markers[id]);
+        delete markers[id];
+        buildPath();
+    }
 
- 
+    function collectPath() {
+        return Object.values(markers).map(m => m.getLatLng()).map(m => ({lat: m.lat, lon: m.lng}));
+    }
 
-   <body>
+    let polyline;
+    async function buildPath() {
+        if (polyline) {
+            map.removeLayer(polyline);
+        }
 
-      <div id = "map" style = "width: 900px; height: 580px"></div>
+        let path = collectPath();
+        if (path.length > 1) {
+            let complete_path = await postJsonQuery('{% url 'build_path' %}', path);
+            polyline = L.polyline(complete_path.map(p => [p.lat, p.lon]), { color: 'red' })
 
-      <script>
-
-         var mapOptions = {
-
-            center: [55.75222,37.6155600],
-
-            zoom: 10
-
-         }
-        
-         var map = new L.map('map', mapOptions);
-
-         var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-
-         map.addLayer(layer);
-
-      </script>
-
-   </body>
-
-  
-
-</html>
+            map.addLayer(polyline);
+        }
+    }
+</script>
+{% endblock %}

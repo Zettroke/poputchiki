@@ -11,6 +11,9 @@ class MapPoint:
         self.lat = lat
         self.lon = lon
 
+    def to_json(self):
+        return self.__dict__
+
 
 class MapService:
     def build_path(self, points: List[MapPoint]):
