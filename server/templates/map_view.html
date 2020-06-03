@@ -1,80 +1,67 @@
-<!DOCTYPE html>
-<html>
+{% extends 'base.html' %}
 
-   <head>
+{% block title %}
+   Publish path
+{% endblock %}
 
-      <title>your map</title>
-      <link rel = "stylesheet" href = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
-      <script src = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+{% block head %}
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+{% endblock %}
+{% block content %}
 
-   </head>
+    <div id="map" style="width: 900px; height: 580px"></div>
 
- 
+<script>
+    let mapOptions = {
+        center: [55.75222, 37.6155600],
+        zoom: 10
+    }
+    let map = new L.map('map', mapOptions);
+    let layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    map.addLayer(layer);
 
-   <body>
+    map.on("click", onMapClick);
 
-      <div id = "map" style = "width: 900px; height: 580px"></div>
+    const markers = {};
+    let marker_id = 0;
+    function onMapClick(e) {
+        let id = marker_id++;
+        let marker = new L.marker(e.latlng, { draggable: true, title: id+1+'' });
+        marker.on('dragend', () => {
+            buildPath();
+        });
+        marker.bindPopup(L.popup().setContent(`
+            <button onclick="removeMarker(${id})">remove</button>
+        `))
+        map.addLayer(marker);
+        markers[id] = marker;
+        buildPath();
+    }
 
-      <script>
+    function removeMarker(id) {
+        map.removeLayer(markers[id]);
+        delete markers[id];
+        buildPath();
+    }
 
-         var mapOptions = {
-            center: [55.75222,37.6155600],
-            zoom: 10
-         }
-         var map = new L.map('map', mapOptions);
-         var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-         map.addLayer(layer);
+    function collectPath() {
+        return Object.values(markers).map(m => m.getLatLng()).map(m => ({lat: m.lat, lon: m.lng}));
+    }
 
+    let polyline;
+    async function buildPath() {
+        if (polyline) {
+            map.removeLayer(polyline);
+        }
 
+        let path = collectPath();
+        if (path.length > 1) {
+            let complete_path = await postJsonQuery('{% url 'build_path' %}', path);
+            polyline = L.polyline(complete_path.map(p => [p.lat, p.lon]), { color: 'red' })
 
-
-         map.on("click", function(e){
-            onMapClick(e);
-         })
-         function onMapClick(e) {
-             if (loc1 == null) {
-                 loc1 = new L.marker(e.latlng, {draggable: 'true'});
-                 loc1.on('dragend', function(event) {
-                     //отправляем запрос маршрута
-                 });
-                 map.addLayer(loc1);
-             }
-             else if (loc2 == null) {
-                 loc2 = new L.marker(e.latlng, {draggable: 'true'});
-                 loc2.on('dragend', function(event) {
-                    //отправляем запрос марурута
-                 });
-                 map.addLayer(loc2);
-                 //отправляем запрос маршрута
-             }
-         }
-         ;
-         var polyline;
-
-          function sendPost() {
-            if (loc2 != null && loc1 != null) {
-              var p1 = loc1.getLatLng(),
-                    p2 = loc2.getLatLng();
-              $.post(
-                    //"/buildpath",
-                    {l1: p1.lat + ',' + p1.lng, l2: p2.lat + ',' + p2.lng},
-              function(data) {
-                if (data) {
-                    if (polyline) {
-                        map.removeLayer(polyline);
-                    }
-                    var points = data;
-                    polyline = new L.polyline(points, {color: 'red'});
-                    map.addLayer(polyline);
-                    map.fitBounds(polyline.getBounds());
-                }
-              },
-                    "json"
-                    );
-            }
-          }
-      </script>
-
-   </body>
-
-</html>
+            map.addLayer(polyline);
+        }
+    }
+</script>
+{% endblock %}
