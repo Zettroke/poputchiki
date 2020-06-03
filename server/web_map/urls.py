@@ -9,4 +9,6 @@ urlpatterns = [
     path('registration', views.registratioт, name='registration'),
     path('path_publish', views.path_publish, name='path_publish'),
     path('build_path', views.build_path, name='build_path'),
+    path('user_paths', views.user_paths, name='user_paths'),
+    path('user_map_view', views.user_map_view, name='user_map_view'),
 ]

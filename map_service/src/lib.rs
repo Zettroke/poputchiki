@@ -43,9 +43,9 @@ pub struct MapPoint {
 #[pymethods]
 impl MapPoint {
   #[new]
-  pub fn new(lat: f64, lon: f64) -> Self {
+  pub fn new(id: u64, lat: f64, lon: f64) -> Self {
     Self {
-      id: 0,
+      id,
       lat,
       lon
     }

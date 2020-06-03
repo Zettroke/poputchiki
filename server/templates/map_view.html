@@ -12,6 +12,11 @@
 
     <div id="map" style="width: 900px; height: 580px"></div>
 
+    <form id="submit-path" action="{% url 'path_publish' %}" method="POST">
+        <input id="input-data" type="hidden" name="data" value="">
+        <button type="submit">submit path</button>
+    </form>
+
 <script>
     let mapOptions = {
         center: [55.75222, 37.6155600],
@@ -50,18 +55,26 @@
     }
 
     let polyline;
+    let current_path;
     async function buildPath() {
-        if (polyline) {
-            map.removeLayer(polyline);
-        }
-
         let path = collectPath();
         if (path.length > 1) {
-            let complete_path = await postJsonQuery('{% url 'build_path' %}', path);
-            polyline = L.polyline(complete_path.map(p => [p.lat, p.lon]), { color: 'red' })
+            current_path = await postJsonQuery('{% url 'build_path' %}', path);
+            if (polyline) {
+                map.removeLayer(polyline);
+            }
+            polyline = L.polyline(current_path.map(p => [p.lat, p.lon]), { color: 'red' })
 
             map.addLayer(polyline);
         }
     }
+
+    $('#submit-path').on('submit', e => {
+        if (current_path) {
+            $('#input-data').val(JSON.stringify(current_path));
+        } else {
+            e.preventDefault();
+        }
+    });
 </script>
 {% endblock %}

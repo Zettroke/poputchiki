@@ -6,8 +6,8 @@ class MapPoint:
     lat: float
     lon: float
 
-    def __init__(self, lat, lon):
-        self.id = 0
+    def __init__(self, id, lat, lon):
+        self.id = id
         self.lat = lat
         self.lon = lon
 

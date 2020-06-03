@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}
+   Publish path
+{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+{% endblock %}
+{% block content %}
+
+    <div id="map" style="width: 900px; height: 580px"></div>
+
+
+<script>
+    let colors = [
+        '#FF6633', '#FF33FF', '#00B3E6', '#E6B333',
+        '#3366E6', '#B34D4D', '#E6B3B3', '#6680B3',
+        '#FF1A66', '#E6331A', '#66994D', '#B366CC',
+        '#4D8000', '#B33300', '#66664D', '#991AFF',
+        '#4DB3FF', '#1AB399', '#E666B3', '#33991A',
+        '#809980', '#999933', '#FF3380', '#4D80CC',
+        '#9900B3', '#E64D66', '#FF4D4D', '#99E6E6',
+        '#6666FF'
+    ].sort(() => Math.random() - 0.5);
+    let mapOptions = {
+        center: [55.75222, 37.6155600],
+        zoom: 10
+    }
+    let map = new L.map('map', mapOptions);
+    let layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    map.addLayer(layer);
+
+    map.on("click", onMapClick);
+
+    const markers = {};
+    let marker_id = 0;
+    function onMapClick(e) {
+        if (Object.keys(markers).length <= 2) {
+            let id = marker_id++;
+            let marker = new L.marker(e.latlng, { draggable: true, title: id+1+'' });
+            marker.on('dragend', () => {
+                buildPath();
+            });
+            marker.bindPopup(L.popup().setContent(`
+                <button onclick="removeMarker(${id})">remove</button>
+            `))
+            map.addLayer(marker);
+            markers[id] = marker;
+            buildPath();
+        }
+    }
+
+    function removeMarker(id) {
+        map.removeLayer(markers[id]);
+        delete markers[id];
+        buildPath();
+    }
+
+    function collectPath() {
+        return Object.values(markers).map(m => m.getLatLng()).map(m => ({lat: m.lat, lon: m.lng}));
+    }
+
+    let paths = [];
+    let polylines = [];
+    async function requestPaths() {
+        paths = [];
+        polylines.forEach(p => map.removeLayer(p));
+        polylines = [];
+        const resp = await getQuery('{% url 'user_paths' %}');
+        for (const user_path of resp) {
+            paths.push(user_path);
+            let polyline = L.polyline(
+                user_path.points.map(p => [p.lat, p.lon]),
+                {
+                    fillColor: colors[paths.length],
+                    color: colors[paths.length],
+                    weight: 5,
+                    fillOpacity: 0.6
+                }
+            );
+            map.addLayer(polyline);
+            polylines.push(polyline);
+        }
+    }
+
+    requestPaths();
+
+    $('#submit-path').on('submit', e => {
+        if (current_path) {
+            $('#input-data').val(JSON.stringify(current_path));
+        } else {
+            e.preventDefault();
+        }
+    });
+</script>
+{% endblock %}
