@@ -9,6 +9,7 @@ use quick_xml::events::{Event, BytesStart};
 use crate::utils::{u64_parse, f64_parse};
 use crate::graph::{RoadGraph, Node, NodeKind};
 use std::rc::Rc;
+use pyo3::types::PyDict;
 
 pub mod osm_map;
 pub mod graph;
@@ -42,12 +43,19 @@ pub struct MapPoint {
 #[pymethods]
 impl MapPoint {
   #[new]
-  pub fn new(lat: f64, lon: f64) -> Self {
+  pub fn new(id: u64, lat: f64, lon: f64) -> Self {
     Self {
-      id: 0,
+      id,
       lat,
       lon
     }
+  }
+  pub fn to_json<'a>(&self, py: Python<'a>) -> &'a PyDict {
+    let mut d = PyDict::new(py);
+    d.set_item("id", self.id);
+    d.set_item("lat", self.lat);
+    d.set_item("lon", self.lon);
+    d
   }
 }
 

@@ -61,7 +61,14 @@ impl RoadGraph {
       .map(|id| NodeId(id))
   }
 
+  fn reset_graph(&mut self) {
+    for n in self.nodes.iter_mut() {
+      n.eta = u32::MAX;
+    }
+  }
+
   pub fn shortest_path(&mut self, start: NodeId, end: NodeId) -> Vec<u64> {
+    self.reset_graph();
     let mut queue = BinaryHeap::new();
     self.node_mut(start).eta = 0;
     let start_node = self.node(start);
