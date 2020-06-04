@@ -1,0 +1,61 @@
+<html>
+  <head>
+    <title>Make the way</title>
+    <style>
+      body 
+	  {
+        background: #000 url(https://images.hdqwalls.com/download/dark-blue-green-gradient-4k-i4-3840x2400.jpg);
+        color: #fff; 
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Add transport</h1>
+    <form method="post">
+	  {% csrf_token %}
+      <p><b>Car model:</b><br>
+      <input required type="text" size="40" name="model" list = "list1">
+      <datalist id="list1">
+        <option value="Bmw" label="Bmw">
+        <option value="Toyota" label="Toyota">
+        <option value="Infinity" label="Infinity">
+        <option value="Volga" label="Volga">
+        <option value="Lada" label="Lada">
+        <option value="Honda" label="Honda">
+        <option value="Ford" label="Ford">
+        <option value="Suzuki" label="Suzuki">
+        <option value="Opel" label="Opel">
+        <option value="Nissan" label="Nissan">
+        <option value="Mazda" label="Mazda">
+        <option value="Mercedes" label="Mercedes">
+      </datalist>
+      </p>
+      <p><b>Car Number:</b><br>
+      <input required type="text" name="car_number" size="12">
+      </p>
+      <p><b>Free places:</b><br>
+      <input required type="number" name="place" step="1" min="1" max="10" list = "list2" size="10" value="1">
+      <datalist id="list2">
+        <option value="1" label="1">
+        <option value="2" label="2">
+        <option value="3" label="3">
+        <option value="4" label="4">
+        <option value="5" label="5">
+      </datalist>
+      <p><b>Additional function:</b><Br>
+      <input type="checkbox" name="option" value="smoking">May smoking   <Br>
+      <input type="checkbox" name="option" value="music">May play music <Br>
+      <input type="checkbox" name="option" value="dog">With dog  <Br>
+      </p>
+      <p><b>Contact data:</b><br>
+      <input type="text" size="40" name="contact_data">
+      </p>
+      <p><b>Comment:</b><Br>
+      <textarea name="comment" cols="40" rows="5"></textarea></p>
+      <p><input type="submit" value="Apply">
+      <input type="reset" value="Abort"></p>
+    </form>
+	<br>
+	<a href="/main">Back to main page!<a>
+  </body>
+</html>
