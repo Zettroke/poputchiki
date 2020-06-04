@@ -45,7 +45,7 @@ def add_transport(req):
     if req.method == 'POST':
         new_transport = Transport()
         new_transport.model = req.POST.get("model", "")
-        new_transport.car_namber = req.POST.get("car_namber", "")
+        new_transport.car_number = req.POST.get("car_number", "")
         new_transport.place = req.POST.get("place", 1)
         if "smoking" in req.POST.get("option", []):
             new_transport.option1 = True
@@ -59,8 +59,8 @@ def add_transport(req):
             new_transport.option3 = True
         else:
             new_transport.option3 = False
-        new_transport.conect = req.POST.get("conect_data", "")
-        new_transport.coment = req.POST.get("coment", "")
+        new_transport.contact = req.POST.get("contact_data", "")
+        new_transport.comment = req.POST.get("comment", "")
         new_transport.user = req.user
         new_transport.save()
         return HttpResponseRedirect("/main")
@@ -69,12 +69,7 @@ def add_transport(req):
 @login_required
 def show_my_transport(req):
     transport = Transport.objects.all().filter(user=req.user)
-    list = ''
-    for element in transport:
-        list += '<li>model: {} <br> car namber: {} <br> free place: {:} <br> contact: \
-        {} <br> coment: {}</li>\n'.\
-        format(element.model, element.car_namber, element.place, element.conect, element.coment)
-    return render(req, "htmlfiles/show_transport.html", {'list':list})
+    return render(req, "htmlfiles/show_transport.html", {'transports': transport})
 
 @login_required
 def main(req):

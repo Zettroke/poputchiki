@@ -15,7 +15,15 @@
   <body>
   <h1>Transport</h1>
   <ul id="navbar">
-    {{ list|safe }}
+      {% for tr in transports %}
+          <li>
+              model: {{ tr.model }} <br>
+              car number: {{ tr.car_number }} <br>
+              free place: {{ tr.place }} <br>
+              contact: {{ tr.contact }} <br>
+              comment: {{ tr.comment }}
+          </li>
+      {% endfor %}
   </ul>
   <a href="/main">Back to main page!<a>
   </body>

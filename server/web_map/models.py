@@ -14,24 +14,17 @@ class UserPath(models.Model):
     # osm_id нод
     # path = ArrayField(models.BigIntegerField())
 
+
 class Transport(models.Model):
     model = models.CharField(max_length=41)
-    car_namber = models.CharField(max_length=13)
+    car_number = models.CharField(max_length=13)
     place = models.IntegerField()
     option1 = models.BooleanField()
     option2 = models.BooleanField()
     option3 = models.BooleanField()
-    conect = models.CharField(max_length=41)
-    coment = models.CharField(max_length=200)
+    contact = models.CharField(max_length=41)
+    comment = models.CharField(max_length=200)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-
-    def to_json(self):
-        return {
-            'id': self.id,
-            'starts_at': self.starts_at,
-            'ends_at': self.ends_at,
-            'points': [p.to_json() for p in self.points.all()]
-        }
 
 
 class PathPoint(models.Model):
