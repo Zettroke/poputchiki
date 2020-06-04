@@ -57,14 +57,19 @@ def add_transport(req):
         new_transport.conect = req.POST.get("conect_data", "")
         new_transport.coment = req.POST.get("coment", "")
         new_transport.user = req.user
-        print(new_transport.user.username)
         new_transport.save()
         return HttpResponseRedirect("/main")
     return render(req, "htmlfiles/add_transport.html")
 
 @login_required
 def show_my_transport(req):
-    print(Transport.objects.all().filter(person=2006));
+    transport = Transport.objects.all().filter(user=req.user)
+    list = ''
+    for element in transport:
+        list += '<li>model: {} <br> car namber: {} <br> free place: {:} <br> contact: \
+        {} <br> coment: {}</li>\n'.\
+        format(element.model, element.car_namber, element.place, element.conect, element.coment)
+    return render(req, "htmlfiles/show_transport.html", {'list':list})
 
 @login_required
 def main(req):

@@ -10,4 +10,5 @@ urlpatterns = [
     path('path_publish', views.path_publish, name='path_publish'),
     path('build_path', views.build_path, name='build_path'),
     path('add_transport', views.add_transport, name='add_transport'),
+    path('my_transport', views.show_my_transport, name='my_transport')
 ]
