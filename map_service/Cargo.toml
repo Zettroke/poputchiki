@@ -17,6 +17,7 @@ name = "map_service"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies.pyo3]
-git = "https://github.com/PyO3/pyo3.git#626268d28aeef57c04b45bdc8140966965742d5f"
-branch = "master"
+version = "0.10.1"
+#git = "https://github.com/PyO3/pyo3.git#626268d28aeef57c04b45bdc8140966965742d5f"
+#branch = "master"
 features = ["extension-module"]

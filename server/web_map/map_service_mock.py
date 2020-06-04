@@ -5,11 +5,13 @@ class MapPoint:
     id: int
     lat: float
     lon: float
+    path_id: int
 
-    def __init__(self, id, lat, lon):
+    def __init__(self, id, lat, lon, **kwargs):
         self.id = id
         self.lat = lat
         self.lon = lon
+        self.path_id = kwargs.get('path_id')
 
     def to_json(self):
         return self.__dict__

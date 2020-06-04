@@ -6,15 +6,18 @@ use std::io::{BufReader, Write};
 use flate2::bufread::GzDecoder;
 use quick_xml::Reader;
 use quick_xml::events::{Event, BytesStart};
-use crate::utils::{u64_parse, f64_parse};
 use crate::graph::{RoadGraph, Node, NodeKind};
 use std::rc::Rc;
-use pyo3::types::PyDict;
+use pyo3::types::{PyDict, PyList};
+use pyo3::exceptions::TypeError;
+use std::borrow::Borrow;
+use std::ops::Deref;
 
 pub mod osm_map;
 pub mod graph;
 pub mod utils;
 
+/// distance in centimeters
 pub fn distance(n1: &Node, n2: &Node) -> u32 {
   let lat1 = n1.lat.to_radians();
   let lat2 = n2.lat.to_radians();
@@ -29,6 +32,31 @@ pub fn distance(n1: &Node, n2: &Node) -> u32 {
   return (c * 6_371_302_00.0).round() as u32; // cm
 }
 
+/// distance in milliseconds
+pub fn distance_t(n1: &Node, n2: &Node, speed: Kmh) -> u32 {
+  let cm = distance(n1, n2);
+  (cm as f64 / speed.as_cm_per_millisecond()).round() as u32
+}
+
+/// Km/h
+pub struct Kmh(u32);
+impl From<u32> for Kmh {
+  fn from(v: u32) -> Self {
+    Self(v)
+  }
+}
+impl Kmh{
+  pub fn as_cm_per_millisecond(&self) -> f64 {
+    self.0 as f64 / 3.6 / 1000.0 * 100.0
+  }
+}
+
+// #[pyclass]
+// #[derive(Debug)]
+// pub struct MapCarPaths {
+//   paths: Vec<Vec<MapPoint>>
+// }
+
 #[pyclass]
 #[derive(Debug)]
 pub struct MapPoint {
@@ -37,19 +65,30 @@ pub struct MapPoint {
   #[pyo3(get)]
   pub lat: f64,
   #[pyo3(get)]
-  pub lon: f64
+  pub lon: f64,
+  #[pyo3(get)]
+  pub path_id: Option<u64>
 }
 
 #[pymethods]
 impl MapPoint {
   #[new]
-  pub fn new(id: u64, lat: f64, lon: f64) -> Self {
-    Self {
+  #[args(kwargs="**")]
+  pub fn new(id: u64, lat: f64, lon: f64, kwargs: Option<&PyDict>) -> PyResult<Self> {
+    let path_id = kwargs.map(|d|
+        d.get_item("path_id")
+            .map(|v| v.extract::<Option<u64>>())
+            .unwrap_or(Ok(None))
+    ).unwrap_or(Ok(None));
+
+    Ok(Self {
       id,
       lat,
-      lon
-    }
+      lon,
+      path_id: path_id?
+    })
   }
+
   pub fn to_json<'a>(&self, py: Python<'a>) -> &'a PyDict {
     let mut d = PyDict::new(py);
     d.set_item("id", self.id);
@@ -64,7 +103,8 @@ impl From<&OsmNode> for MapPoint {
     MapPoint {
       id: n.id,
       lat: n.lat,
-      lon: n.lon
+      lon: n.lon,
+      path_id: None
     }
   }
 }
@@ -88,96 +128,16 @@ impl MapService {
   }
 
   pub fn load(&mut self, path: String) {
-    let reader = BufReader::new(GzDecoder::new(BufReader::new(File::open(path).unwrap())));
-    let mut event_reader = Reader::from_reader(reader);
-    let mut buf = Vec::new();
-    let mut nodes = HashMap::new();
-    let mut ways = HashMap::new();
-
-    let mut current_way: Option<OsmWay> = None;
-    let mut is_current_way_highway = false;
-    loop {
-      match event_reader.read_event(&mut buf) {
-        Ok(Event::Start(ref e)) => {
-          match e.name() {
-            b"node" => {
-              let node = handle_node(e);
-              nodes.insert(node.id, node);
-            },
-            b"way" => {
-              let mut id = 0u64;
-              e.attributes().find(|v| {
-                v.as_ref().map_or(false, |vv| vv.key == b"id")
-              }).map(|res| id = u64_parse(res.unwrap().value.as_ref()));
-              current_way = Some(OsmWay::new(id, "".to_string()));
-            }
-            _ => {}
-          }
-        },
-        Ok(Event::End(ref e)) => {
-          match e.name() {
-            b"way" => {
-              if let Some(way) = current_way.take() {
-                if is_current_way_highway {
-                  ways.insert(way.id, way);
-                  is_current_way_highway = false;
-                }
-              }
-            },
-            _ => {}
-          }
-        },
-        Ok(Event::Empty(ref e)) => {
-          match e.name() {
-            b"node" => {
-              let node = handle_node(e);
-              nodes.insert(node.id, node);
-            },
-            b"nd" => {
-              let nd_ref =
-                e.attributes().find(|a| a.as_ref().map_or(false, |a| a.key == b"ref"))
-                  .map(|v| u64_parse(v.unwrap().value.as_ref()));
-              if let Some(ref nd_id) = nd_ref {
-                if let Some(node) = nodes.get(nd_id) {
-                  current_way.as_mut().map(|w| w.nodes.push(node.clone()));
-                }
-              }
-            },
-            b"tag" => {
-              if let Some(ref mut way) = current_way {
-                let mut is_current_tag_highway = false;
-                e.attributes().for_each(|attr| {
-                  attr.map(|a| {
-                    match a.key {
-                      b"k" => { is_current_tag_highway = a.value.as_ref() == b"highway" },
-                      b"v" => {
-                        if is_current_tag_highway {
-                          is_current_way_highway = true;
-                          way.highway_type = String::from_utf8(a.value.to_vec()).unwrap();
-                        }
-                      },
-                      _ => {}
-                    }
-                  }).unwrap();
-                });
-              }
-            }
-            _ => {}
-          }
-        },
-        Ok(Event::Eof) => break,
-        Err(e) => panic!("{:?}", e),
-        _ => {}
-      }
-    }
+    let (nodes, ways) = crate::osm_map::load(path);
     self.nodes = nodes;
-    self.nodes.retain(|_, v| Rc::strong_count(&v.0) > 1);
     self.ways = ways;
+
     let cnt = self.nodes.values().filter(|v| Rc::strong_count(&v.0) == 2).count();
     println!("useless nodes: {}/{}", cnt, self.nodes.len());
     self.build_graph();
   }
 
+  /// build graph for humans
   fn build_graph(&mut self) {
     let mut node_id_map = HashMap::new();
     for node in self.nodes.values() {
@@ -198,7 +158,7 @@ impl MapService {
         self.graph.connect_two_way(
           prev_node_id,
           curr_node_id,
-          distance(self.graph.node(prev_node_id), self.graph.node(curr_node_id))
+          distance_t(self.graph.node(prev_node_id), self.graph.node(curr_node_id), Kmh(5))
         );
         prev_node_id = curr_node_id;
       }
@@ -206,6 +166,25 @@ impl MapService {
   }
 
   pub fn build_path(&mut self, points: Vec<PyRef<MapPoint>>) -> Vec<MapPoint> {
+    self.build_path_rust(points.iter().map(|p| p.deref()).collect())
+  }
+
+  pub fn build_path_using_cars(&mut self, points: Vec<PyRef<MapPoint>>, car_paths: &PyList) -> PyResult<Vec<MapPoint>> {
+    let mut paths = Vec::new();
+    for l in car_paths.iter().map(|a| a.extract::<&PyList>()) {
+      let mut points = Vec::new();
+      for point in l?.iter().map(|v| v.extract::<&MapPoint>()) {
+        points.push(point?);
+      }
+      paths.push(points);
+    }
+
+    Ok(Vec::new())
+  }
+}
+
+impl MapService {
+  pub fn build_path_rust(&mut self, points: Vec<&MapPoint>) -> Vec<MapPoint> {
     #[derive(Clone)]
     struct ClosestNode {
       id: u64,
@@ -232,8 +211,8 @@ impl MapService {
       let curr = self.graph.node_id_by_osm_id(cl.id).unwrap();
       path.extend(
         self.graph.shortest_path(prev, curr).into_iter()
-          .map(|id| MapPoint::from(self.nodes.get(&id).unwrap()))
-          .skip(1)
+            .map(|id| MapPoint::from(self.nodes.get(&id).unwrap()))
+            .skip(1)
       );
       prev = curr;
     }
@@ -243,33 +222,9 @@ impl MapService {
   }
 }
 
-
-fn handle_node(e: &BytesStart) -> OsmNode {
-  let mut id = 0; let mut lat = 0.0; let mut lon = 0.0;
-  e.attributes().for_each(|v| {
-    if let Ok(a) = v {
-      match a.key {
-        b"id" => {
-          id = u64_parse(a.value.as_ref());
-        },
-        b"lat" => {
-          lat = f64_parse(a.value.as_ref());
-        },
-        b"lon" => {
-          lon = f64_parse(a.value.as_ref());
-        },
-        _ => {}
-      }
-    }
-  });
-
-  return OsmNode::new(id, lat, lon);
-}
-
 /// MapService responsible for working with map data and paths.
 #[pymodule]
 fn map_service(_py: Python, m: &PyModule) -> PyResult<()> {
-  // m.add_wrapped(wrap_pyfunction!(sum_as_string))?;
   m.add_class::<MapService>()?;
   m.add_class::<MapPoint>()?;
   Ok(())

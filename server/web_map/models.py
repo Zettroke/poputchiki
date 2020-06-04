@@ -34,7 +34,12 @@ class PathPoint(models.Model):
     lon = models.FloatField()
 
     def to_map_point(self):
-        return MapPoint(self.osm_id, self.lat, self.lon)
+        return MapPoint(
+            self.osm_id,
+            self.lat,
+            self.lon,
+            path_id=self.user_path_id
+        )
 
     def to_json(self):
         return {

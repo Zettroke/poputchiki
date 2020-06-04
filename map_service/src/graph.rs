@@ -1,21 +1,20 @@
 use std::collections::{VecDeque, BinaryHeap, HashMap};
 use serde::{Serialize, Deserialize};
 use std::cmp::Ordering;
-use crate::distance;
+use crate::{distance, MapPoint};
 use std::ops::Deref;
 
 #[derive(Serialize)]
 pub struct RoadGraph {
   pub nodes: Vec<Node>,
-  /// OSM'овские id нод. Прямое соответствие
-  pub osm_nodes_ids: Vec<u64>
+  pub additional_nodes_num: u32,
 }
 
 impl RoadGraph {
   pub fn new() -> Self {
     Self {
       nodes: Vec::new(),
-      osm_nodes_ids: Vec::new()
+      additional_nodes_num: 0
     }
   }
   pub fn node<'a, 'b>(&'a self, id: NodeId) -> &'b Node {
@@ -25,9 +24,33 @@ impl RoadGraph {
     unsafe { std::mem::transmute::<_, &'b mut Node>(self.nodes.get_mut(id.0).unwrap()) }
   }
 
-  pub fn add_node(&mut self, node: Node, osm_id: u64) -> NodeId {
+  pub fn add_node(&mut self, node: Node) -> NodeId {
     self.nodes.push(node);
-    self.osm_nodes_ids.push(osm_id);
+    NodeId(self.nodes.len() - 1)
+  }
+
+  pub fn add_map_point(&mut self, p: &MapPoint) -> NodeId {
+    self.nodes.push(Node {
+      id: p.id,
+      lat: p.lat,
+      lon: p.lon,
+      eta: u32::MAX,
+      kind: NodeKind::Plain,
+      nodes: Vec::new()
+    });
+    NodeId(self.nodes.len() - 1)
+  }
+
+  pub fn add_car_map_point(&mut self, p: &MapPoint, eta: u32, free_seats: u8) -> NodeId {
+    self.additional_nodes_num += 1;
+    self.nodes.push(Node {
+      id: p.id,
+      lat: p.lat,
+      lon: p.lon,
+      eta: u32::MAX,
+      kind: NodeKind::Car { eta, free_seats },
+      nodes: Vec::new()
+    });
     NodeId(self.nodes.len() - 1)
   }
 
@@ -93,7 +116,7 @@ impl RoadGraph {
     if end_node.eta == u32::MAX {
       return  Vec::new();
     } else {
-      let mut path = vec![self.osm_id(end)];
+      let mut path = vec![self.node(end).id];
 
       let mut curr_node = end_node;
       'main: while curr_node.eta != 0 {
@@ -101,7 +124,7 @@ impl RoadGraph {
           let n = self.node(link.node);
           if n.eta == curr_node.eta.overflowing_sub(link.len).0 {
             curr_node = n;
-            path.push(self.osm_id(link.node));
+            path.push(self.node(link.node).id);
             continue 'main;
           }
         }
@@ -144,6 +167,7 @@ pub struct Node {
   pub nodes: Vec<NodeLink>,
   pub eta: u32,
   pub kind: NodeKind,
+  pub id: u64,
   pub lon: f64,
   pub lat: f64
 }
