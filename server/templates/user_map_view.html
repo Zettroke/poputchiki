@@ -37,7 +37,7 @@
     const markers = {};
     let marker_id = 0;
     function onMapClick(e) {
-        if (Object.keys(markers).length <= 2) {
+        if (Object.keys(markers).length < 2) {
             let id = marker_id++;
             let marker = new L.marker(e.latlng, { draggable: true, title: id+1+'' });
             marker.on('dragend', () => {
@@ -82,6 +82,21 @@
             );
             map.addLayer(polyline);
             polylines.push(polyline);
+        }
+    }
+
+    let polyline;
+    let current_path;
+    async function buildPath() {
+        let path = collectPath();
+        if (path.length > 1) {
+            current_path = await postJsonQuery('{% url 'build_user_path' %}', path);
+            if (polyline) {
+                map.removeLayer(polyline);
+            }
+            polyline = L.polyline(current_path.map(p => [p.lat, p.lon]), { color: 'red' })
+
+            map.addLayer(polyline);
         }
     }
 

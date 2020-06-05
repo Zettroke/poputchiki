@@ -106,6 +106,18 @@ def build_path(req: HttpRequest):
     return HttpResponseBadRequest()
 
 
+@csrf_exempt
+def build_user_path(req: HttpRequest):
+    if req.method == 'POST':
+        points = [MapPoint(v.get('id', 0), v['lat'], v['lon']) for v in json.loads(req.body)]
+        paths = [
+            p.to_car_path() for p in UserPath.objects.all().prefetch_related('points').order_by('id').reverse()
+        ]
+        path = MapManager.get_service().build_path_using_cars(0, points, paths)
+        return HttpResponse(json.dumps([p.to_json() for p in path]))
+    return HttpResponseBadRequest()
+
+
 @login_required
 def user_map_view(req: HttpRequest):
     return render(req, 'user_map_view.html')

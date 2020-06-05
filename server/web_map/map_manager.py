@@ -1,10 +1,11 @@
 try:
-    from map_service import MapService, MapPoint
+    from map_service import MapService, MapPoint, MapCarPath
 except Exception:
-    from web_map.map_service_mock import MapService, MapPoint
+    from web_map.map_service_mock import MapService, MapPoint, MapCarPath
 
 MapService = MapService
 MapPoint = MapPoint
+MapCarPath = MapCarPath
 
 
 class MapManager:
