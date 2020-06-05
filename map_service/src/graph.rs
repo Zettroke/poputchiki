@@ -1,7 +1,7 @@
 use std::collections::{VecDeque, BinaryHeap, HashMap};
 use serde::{Serialize, Deserialize};
 use std::cmp::Ordering;
-use crate::{distance, MapPoint, distance_t, Kmh};
+use crate::{distance, MapPoint, distance_t, Kmh, PathResult};
 use std::ops::Deref;
 
 #[derive(Serialize)]
@@ -106,7 +106,7 @@ impl RoadGraph {
     }
   }
 
-  pub fn shortest_path(&mut self, start: NodeId, end: NodeId) -> Vec<MapPoint> {
+  pub fn shortest_path(&mut self, start: NodeId, end: NodeId) -> PathResult {
     let mut queue = BinaryHeap::new();
     self.node_mut(start).eta = 0;
     let start_node = self.node(start);
@@ -159,15 +159,15 @@ impl RoadGraph {
     }
     if end_node.eta == u32::MAX {
       self.reset_graph();
-      return  Vec::new();
+      return PathResult::default();
     } else {
       let mut path = vec![MapPoint::from(self.node(end))];
+      let mut path_etas = vec![self.node(end).eta];
 
       let mut curr_node = end_node;
       'main: while curr_node.eta != 0 {
         trace!("\n---------------curr_node----------------");
         trace!("id: {} kind: {:?} eta: {}\n----", curr_node.id, curr_node.kind, curr_node.eta);
-        let mut found = false;
         match curr_node.kind {
           NodeKind::Plain => {
             for link in curr_node.nodes.iter() {
@@ -175,7 +175,8 @@ impl RoadGraph {
               if n.eta == curr_node.eta.overflowing_sub(link.len).0 {
                 trace!("id: {} kind: {:?} eta: {} = {} link_len: {}", n.id, n.kind, n.eta, curr_node.eta.overflowing_sub(link.len).0, link.len);
                 curr_node = n;
-                path.push(MapPoint::from(self.node(link.node)));
+                path.push(MapPoint::from(n));
+                path_etas.push(n.eta);
                 continue 'main;
               }
             }
@@ -188,7 +189,8 @@ impl RoadGraph {
                   if n.eta == curr_node.eta.overflowing_sub(link.len + (eta - n.eta as i64) as u32).0 && path[path.len() - 2].id != n.id {
                     trace!("id: {} kind: {:?} eta: {} = {} link_len: {}", n.id, n.kind, n.eta, curr_node.eta.overflowing_sub(link.len + (eta - n.eta as i64) as u32).0, link.len);
                     curr_node = n;
-                    path.push(MapPoint::from(self.node(link.node)));
+                    path.push(MapPoint::from(n));
+                    path_etas.push(n.eta);
                     continue 'main;
                   }
                 },
@@ -196,7 +198,8 @@ impl RoadGraph {
                   if n.eta == curr_node.eta.overflowing_sub(link.len).0 {
                     trace!("id: {} kind: {:?} eta: {} = {} link_len: {}", n.id, n.kind, n.eta, curr_node.eta.overflowing_sub(link.len + /* plain -> car base link_len */1).0, link.len);
                     curr_node = n;
-                    path.push(MapPoint::from(self.node(link.node)));
+                    path.push(MapPoint::from(n));
+                    path_etas.push(n.eta);
                     continue 'main;
                   }
                 }
@@ -208,8 +211,13 @@ impl RoadGraph {
         break;
       }
       path.reverse();
+      path_etas.reverse();
       self.reset_graph();
-      return path;
+      return PathResult {
+        total_time: *path_etas.last().unwrap(),
+        points: path,
+        eta_list: path_etas
+      };
     }
   }
 }

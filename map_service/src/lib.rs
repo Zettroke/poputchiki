@@ -61,6 +61,47 @@ pub struct PlainMapCarPath<'a> {
 }
 
 #[pyclass]
+#[derive(Debug, Default)]
+pub struct PathResultObject {
+  #[pyo3(get)]
+  pub total_time: u32,
+  #[pyo3(get)]
+  pub points: Vec<Py<MapPoint>>,
+  #[pyo3(get)]
+  pub eta_list: Vec<u32>
+}
+#[pymethods]
+impl PathResultObject {
+  pub fn to_json<'a>(&self, py: Python<'a>) -> &'a PyDict {
+    let d = PyDict::new(py);
+    d.set_item("total_time", self.total_time);
+    d.set_item("points", &self.points.iter().map(|p| {
+      let v = p.as_ref(py).borrow();
+      v.to_json(py.clone())
+    }).collect::<Vec<&PyDict>>());
+    d.set_item("eta_list", &self.eta_list);
+    d
+  }
+}
+
+impl PathResultObject {
+  pub fn from_path_result(py: Python, pr: PathResult) -> Self {
+    Self {
+      total_time: pr.total_time,
+      eta_list: pr.eta_list,
+      points: pr.points.into_iter().map(|p| Py::new(py, p).unwrap()).collect()
+    }
+  }
+}
+
+#[derive(Debug, Default, Serialize)]
+pub struct PathResult {
+  pub total_time: u32,
+  pub points: Vec<MapPoint>,
+  pub eta_list: Vec<u32>
+}
+
+#[pyclass]
 #[derive(Debug)]
 pub struct MapCarPath {
   #[pyo3(get)]
@@ -230,11 +271,12 @@ impl MapService {
     }
   }
 
-  pub fn build_path(&mut self, points: Vec<PyRef<MapPoint>>) -> Vec<MapPoint> {
-    self.build_path_rust(points.iter().map(|p| p.deref()).collect())
+  pub fn build_path(&mut self, py: Python, points: Vec<PyRef<MapPoint>>) -> PathResultObject {
+    let pr = self.build_path_rust(points.iter().map(|p| p.deref()).collect());
+    PathResultObject::from_path_result(py, pr)
   }
 
-  pub fn build_path_using_cars(&mut self, py: Python, start_at: i64, points: Vec<PyRef<MapPoint>>, car_paths: Vec<PyRef<MapCarPath>>) -> PyResult<Vec<MapPoint>> {
+  pub fn build_path_using_cars(&mut self, py: Python, start_at: i64, points: Vec<PyRef<MapPoint>>, car_paths: Vec<PyRef<MapCarPath>>) -> PyResult<PathResultObject> {
     let points: Vec<&MapPoint> = points.iter().map(|p| p.deref()).collect();
     let mut v = Vec::new();
     let mut tmp = Vec::new();
@@ -249,7 +291,7 @@ impl MapService {
       v.push(pmcp);
     }
 
-    Ok(self.build_path_using_cars_rust(start_at, points, v))
+    Ok(PathResultObject::from_path_result(py, self.build_path_using_cars_rust(start_at, points, v)))
   }
 }
 
@@ -260,8 +302,40 @@ struct ClosestNode {
 }
 
 impl MapService {
-  pub fn build_path_rust(&mut self, points: Vec<&MapPoint>) -> Vec<MapPoint> {
+  pub fn build_path_rust(&mut self, points: Vec<&MapPoint>) -> PathResult {
     let st = std::time::Instant::now();
+
+    let mut closest = self.get_closest_list(points);
+
+    let start_node_id = closest.get(0).unwrap().id;
+    // let mut path = vec![MapPoint::from(self.nodes.get(&start_node_id).unwrap())];
+    let mut prev = self.graph.node_id_by_osm_id(start_node_id).unwrap();
+
+    let mut path_result = PathResult {
+      points: vec![MapPoint::from(self.nodes.get(&start_node_id).unwrap())],
+      eta_list: vec![0],
+      total_time: 0
+    };
+
+    for cl in closest.iter().skip(1) {
+      let curr = self.graph.node_id_by_osm_id(cl.id).unwrap();
+      let pr = self.graph.shortest_path(prev, curr);
+      let prev_total_time = path_result.total_time;
+      path_result.points.extend(
+        pr.points.into_iter().skip(1)
+      );
+      path_result.eta_list.extend(
+        pr.eta_list.into_iter().skip(1).map(|t| prev_total_time + t)
+      );
+      path_result.total_time = prev_total_time + pr.total_time;
+      prev = curr;
+    }
+    let en = std::time::Instant::now();
+    info!("Build path in {}s.", (en - st).as_secs_f64());
+    path_result
+  }
+
+  fn get_closest_list(&self, points: Vec<&MapPoint>) -> Vec<ClosestNode> {
     let mut closest = vec![ClosestNode { id: 0, dist: f64::MAX }; points.len()];
     for (k, v) in self.nodes.iter() {
       for (ind, point) in points.iter().enumerate() {
@@ -273,24 +347,10 @@ impl MapService {
         }
       }
     }
-
-    let start_node_id = closest.get(0).unwrap().id;
-    let mut path = vec![MapPoint::from(self.nodes.get(&start_node_id).unwrap())];
-    let mut prev = self.graph.node_id_by_osm_id(start_node_id).unwrap();
-
-    for cl in closest.iter().skip(1) {
-      let curr = self.graph.node_id_by_osm_id(cl.id).unwrap();
-      path.extend(
-        self.graph.shortest_path(prev, curr).into_iter().skip(1)
-      );
-      prev = curr;
-    }
-    let en = std::time::Instant::now();
-    info!("Build path in {}s.", (en - st).as_secs_f64());
-    path
+    closest
   }
 
-  pub fn build_path_using_cars_rust(&mut self, start_at: i64, points: Vec<&MapPoint>, car_paths: Vec<PlainMapCarPath>) -> Vec<MapPoint> {
+  pub fn build_path_using_cars_rust(&mut self, start_at: i64, points: Vec<&MapPoint>, car_paths: Vec<PlainMapCarPath>) -> PathResult {
     let st = std::time::Instant::now();
     for p in car_paths.iter() {
       let ppoints = &p.path;
@@ -331,17 +391,7 @@ impl MapService {
       }
     }
 
-    let mut closest = vec![ClosestNode { id: 0, dist: f64::MAX }; points.len()];
-    for (k, v) in self.nodes.iter() {
-      for (ind, point) in points.iter().enumerate() {
-        let mut cl = &mut closest[ind];
-        let d = (v.lat - point.lat).powi(2) + (v.lon - point.lon).powi(2);
-        if cl.dist > d {
-          cl.dist = d;
-          cl.id = *k;
-        }
-      }
-    }
+    let mut closest = self.get_closest_list(points);
 
     let n1 = *self.graph.node_map.get(&closest[0].id).unwrap();
     let n2 = *self.graph.node_map.get(&closest[1].id).unwrap();

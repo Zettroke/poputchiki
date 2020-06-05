@@ -26,6 +26,7 @@ class MapCarPath:
         self.path = path
 
 
+
 class MapService:
     def build_path(self, points: List[MapPoint]):
         return [points[0], points[-1]]

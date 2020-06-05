@@ -199,6 +199,7 @@ fn main() {
   };
 
   let res = ms.build_path_using_cars_rust(0, path.iter().collect(), vec![car_path]);
+  println!("{:?}", res);
   let s = serde_json::to_string_pretty(&res).unwrap();
   File::create("path.json").unwrap().write_all(s.as_bytes());
 

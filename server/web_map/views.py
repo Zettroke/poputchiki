@@ -102,7 +102,7 @@ def build_path(req: HttpRequest):
     if req.method == 'POST':
         points = [MapPoint(v.get('id', 0), v['lat'], v['lon']) for v in json.loads(req.body)]
         path = MapManager.get_service().build_path(points)
-        return HttpResponse(json.dumps([p.to_json() for p in path]))
+        return JsonResponse(path.to_json(), safe=False)
     return HttpResponseBadRequest()
 
 
@@ -110,11 +110,12 @@ def build_path(req: HttpRequest):
 def build_user_path(req: HttpRequest):
     if req.method == 'POST':
         points = [MapPoint(v.get('id', 0), v['lat'], v['lon']) for v in json.loads(req.body)]
-        paths = [
-            p.to_car_path() for p in UserPath.objects.all().prefetch_related('points').order_by('id').reverse()
-        ]
-        path = MapManager.get_service().build_path_using_cars(0, points, paths)
-        return HttpResponse(json.dumps([p.to_json() for p in path]))
+
+        paths = list(p for p in UserPath.objects.all().prefetch_related('points').order_by('id').reverse())
+
+        path = MapManager.get_service().build_path_using_cars(0, points, [p.to_car_path() for p in paths])
+
+        return JsonResponse({'car_paths': [p.to_json() for p in paths], 'path': path.to_json()}, safe=False)
     return HttpResponseBadRequest()
 
 
