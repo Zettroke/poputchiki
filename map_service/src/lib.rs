@@ -6,7 +6,7 @@ use std::io::{BufReader, Write};
 use flate2::bufread::GzDecoder;
 use quick_xml::Reader;
 use quick_xml::events::{Event, BytesStart};
-use crate::graph::{RoadGraph, Node, NodeKind};
+use crate::graph::{RoadGraph, Node, NodeKind, ROAD_TO_CAR};
 use std::rc::Rc;
 use pyo3::types::{PyDict, PyList};
 use pyo3::exceptions::TypeError;
@@ -362,7 +362,7 @@ impl MapService {
       self.graph.connect_two_way(
         prev_node_id,
         *self.graph.node_map.get(&prev_point.id).unwrap(),
-        1
+        ROAD_TO_CAR
       );
 
       for curr_point in ppoints.iter().skip(1) {
@@ -383,7 +383,7 @@ impl MapService {
         self.graph.connect_two_way(
           curr_node_id,
           *self.graph.node_map.get(&curr_point.id).unwrap(),
-          1
+          ROAD_TO_CAR
         );
         prev_car_eta = curr_car_eta;
         prev_node_id = curr_node_id;

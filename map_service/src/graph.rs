@@ -4,6 +4,8 @@ use std::cmp::Ordering;
 use crate::{distance, MapPoint, distance_t, Kmh, PathResult};
 use std::ops::Deref;
 
+pub const ROAD_TO_CAR: u32 = 1000;
+
 #[derive(Serialize)]
 pub struct RoadGraph {
   pub node_map: HashMap<u64, NodeId>,
@@ -196,7 +198,7 @@ impl RoadGraph {
                 },
                 NodeKind::Car {..} => {
                   if n.eta == curr_node.eta.overflowing_sub(link.len).0 {
-                    trace!("id: {} kind: {:?} eta: {} = {} link_len: {}", n.id, n.kind, n.eta, curr_node.eta.overflowing_sub(link.len + /* plain -> car base link_len */1).0, link.len);
+                    trace!("id: {} kind: {:?} eta: {} = {} link_len: {}", n.id, n.kind, n.eta, curr_node.eta.overflowing_sub(link.len + ROAD_TO_CAR).0, link.len);
                     curr_node = n;
                     path.push(MapPoint::from(n));
                     path_etas.push(n.eta);
