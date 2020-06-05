@@ -113,6 +113,7 @@ impl RoadGraph {
     self.node_mut(start).eta = 0;
     let start_node = self.node(start);
     let end_node = self.node(end);
+
     queue.push(State { cost: start_node.eta + distance_t(start_node, end_node, Kmh(50)), node: start });
     while let Some(state) = queue.pop() {
       if state.node == end {
@@ -120,6 +121,7 @@ impl RoadGraph {
         debug!("dist = {}", self.node(state.node).eta);
         break;
       }
+
       let node = self.node(state.node);
       match node.kind {
         NodeKind::Plain => {
@@ -157,8 +159,9 @@ impl RoadGraph {
           }
         }
       }
-
     }
+
+    // assemble path from graph
     if end_node.eta == u32::MAX {
       self.reset_graph();
       return PathResult::default();
@@ -212,6 +215,7 @@ impl RoadGraph {
         error!("Couldn't find path");
         break;
       }
+
       path.reverse();
       path_etas.reverse();
       self.reset_graph();
