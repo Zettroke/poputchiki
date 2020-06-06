@@ -13,4 +13,5 @@ urlpatterns = [
     path('my_transport', views.show_my_transport, name='my_transport'),
     path('user_paths', views.user_paths, name='user_paths'),
     path('user_map_view', views.user_map_view, name='user_map_view'),
+    path('build_user_path', views.build_user_path, name='build_user_path'),
 ]

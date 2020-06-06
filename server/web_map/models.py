@@ -3,7 +3,7 @@ from django.db import models
 # from django.contrib.postgres.fields import ArrayField
 
 # Create your models here.
-from web_map.map_manager import MapPoint
+from web_map.map_manager import MapPoint, MapCarPath
 
 
 class UserPath(models.Model):
@@ -11,8 +11,16 @@ class UserPath(models.Model):
 
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
-    # osm_id нод
-    # path = ArrayField(models.BigIntegerField())
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'starts_at': self.starts_at,
+            'points': [p.to_json() for p in self.points.all()]
+        }
+
+    def to_car_path(self):
+        return MapCarPath(round(self.starts_at.timestamp()), [p.to_map_point() for p in self.points.all()])
 
 
 class Transport(models.Model):
@@ -34,7 +42,12 @@ class PathPoint(models.Model):
     lon = models.FloatField()
 
     def to_map_point(self):
-        return MapPoint(self.osm_id, self.lat, self.lon)
+        return MapPoint(
+            self.osm_id,
+            self.lat,
+            self.lon,
+            path_id=self.user_path_id
+        )
 
     def to_json(self):
         return {

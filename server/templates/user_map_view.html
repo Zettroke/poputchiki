@@ -11,9 +11,12 @@
 {% block content %}
 
     <div id="map" style="width: 900px; height: 580px"></div>
-
+<input id="date" type="date">
+<input id="time" type="time">
 
 <script>
+    const date_input = $('#date');
+    const time_input = $('#time');
     let colors = [
         '#FF6633', '#FF33FF', '#00B3E6', '#E6B333',
         '#3366E6', '#B34D4D', '#E6B3B3', '#6680B3',
@@ -27,7 +30,7 @@
     let mapOptions = {
         center: [55.75222, 37.6155600],
         zoom: 10
-    }
+    };
     let map = new L.map('map', mapOptions);
     let layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     map.addLayer(layer);
@@ -37,7 +40,7 @@
     const markers = {};
     let marker_id = 0;
     function onMapClick(e) {
-        if (Object.keys(markers).length <= 2) {
+        if (Object.keys(markers).length < 2) {
             let id = marker_id++;
             let marker = new L.marker(e.latlng, { draggable: true, title: id+1+'' });
             marker.on('dragend', () => {
@@ -85,14 +88,53 @@
         }
     }
 
+    let current_path_polylines = []
+    let current_path;
+    async function buildPath() {
+        let path = collectPath();
+        if (path.length > 1) {
+            let form = new FormData();
+            let date = new Date(date_input.val() + ' ' + time_input.val());
+            form.append('start_at', date.toISOString());
+            form.append('points', JSON.stringify(path));
+
+            let result = await (await fetch('{% url 'build_user_path' %}', {
+                method: 'POST',
+                body: form
+            })).json();
+
+            current_path_polylines.forEach(l => map.removeLayer(l));
+            current_path_polylines = [];
+
+            let path_id = result.path.points[0].path_id;
+            let buff = [];
+            for (const p of result.path.points) {
+                if (p.path_id === path_id) {
+                    buff.push([p.lat, p.lon]);
+                } else {
+                    current_path_polylines.push(
+                        L.polyline(buff, { color: path_id ? 'green' : 'red', weight: path_id ? 10 : 3 })
+                    );
+                    buff = [[p.lat, p.lon]]
+                    path_id = p.path_id;
+                }
+            }
+            if (buff.length) {
+                current_path_polylines.push(
+                    L.polyline(buff, { color: path_id ? 'green' : 'red', weight: path_id ? 10 : 3 })
+                );
+            }
+            current_path_polylines.forEach(l => map.addLayer(l));
+        }
+    }
+
     requestPaths();
 
-    $('#submit-path').on('submit', e => {
-        if (current_path) {
-            $('#input-data').val(JSON.stringify(current_path));
-        } else {
-            e.preventDefault();
-        }
-    });
+    let d = new Date();
+    date_input.val(d.toISOString().substr(0, 10));
+    time_input.val(d.toTimeString().substr(0, 8));
+
+    date_input.change(buildPath);
+    time_input.change(buildPath);
 </script>
 {% endblock %}
