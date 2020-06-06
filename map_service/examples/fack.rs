@@ -1,6 +1,6 @@
 use map_service::{MapService, MapPoint, PlainMapCarPath};
 use map_service::osm_map::{OsmNode, InnerNode};
-use std::io::{Read, Write};
+use std::io::Write;
 use std::collections::HashMap;
 use map_service::graph::RoadGraph;
 use std::fs::File;
@@ -201,7 +201,7 @@ fn main() {
   let res = ms.build_path_using_cars_rust(0, path.iter().collect(), vec![car_path]);
   println!("{:?}", res);
   let s = serde_json::to_string_pretty(&res).unwrap();
-  File::create("path.json").unwrap().write_all(s.as_bytes());
+  File::create("path.json").unwrap().write_all(s.as_bytes()).unwrap();
 
   let avg_way_len = ms.ways.values().map(|v|v.nodes.len()).sum::<usize>() as f64 / ms.ways.len() as f64;
   println!("avg_way_len: {}", avg_way_len);
