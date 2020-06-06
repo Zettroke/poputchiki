@@ -19,7 +19,7 @@ impl Deref for OsmNode {
 }
 impl Clone for OsmNode {
   fn clone(&self) -> Self {
-    return Self(self.0.clone())
+    Self(self.0.clone())
   }
 }
 
@@ -31,7 +31,7 @@ pub struct InnerNode {
 
 impl OsmNode {
   pub fn new(id: u64, lat: f64, lon: f64) -> Self {
-    return OsmNode(Rc::new(InnerNode {
+    OsmNode(Rc::new(InnerNode {
       id,
       lat,
       lon
@@ -93,25 +93,25 @@ pub fn load(path: String) -> (HashMap<u64, OsmNode>, HashMap<u64, OsmWay>) {
           },
           b"way" => {
             let mut id = 0u64;
-            e.attributes().find(|v| {
+            if let Some(res) = e.attributes().find(|v| {
               v.as_ref().map_or(false, |vv| vv.key == b"id")
-            }).map(|res| id = u64_parse(res.unwrap().value.as_ref()));
+            }) {
+              id = u64_parse(res.unwrap().value.as_ref());
+            }
+
             current_way = Some(OsmWay::new(id, "".to_string()));
           }
           _ => {}
         }
       },
       Ok(Event::End(ref e)) => {
-        match e.name() {
-          b"way" => {
-            if let Some(way) = current_way.take() {
-              if is_current_way_highway {
-                ways.insert(way.id, way);
-                is_current_way_highway = false;
-              }
+        if e.name() == b"way" {
+          if let Some(way) = current_way.take() {
+            if is_current_way_highway {
+              ways.insert(way.id, way);
+              is_current_way_highway = false;
             }
-          },
-          _ => {}
+          }
         }
       },
       Ok(Event::Empty(ref e)) => {
@@ -126,7 +126,7 @@ pub fn load(path: String) -> (HashMap<u64, OsmNode>, HashMap<u64, OsmWay>) {
                     .map(|v| u64_parse(v.unwrap().value.as_ref()));
             if let Some(ref nd_id) = nd_ref {
               if let Some(node) = nodes.get(nd_id) {
-                current_way.as_mut().map(|w| w.nodes.push(node.clone()));
+                if let Some(w) = current_way.as_mut() { w.nodes.push(node.clone()) }
               }
             }
           },
@@ -184,5 +184,5 @@ fn handle_node(e: &BytesStart) -> OsmNode {
     }
   });
 
-  return OsmNode::new(id, lat, lon);
+  OsmNode::new(id, lat, lon)
 }

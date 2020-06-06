@@ -5,7 +5,7 @@ use crate::{MapPoint, distance_t, Kmh, PathResult};
 
 pub const ROAD_TO_CAR: u32 = 1000;
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 pub struct RoadGraph {
   pub node_map: HashMap<u64, NodeId>,
   pub nodes: Vec<Node>,
@@ -14,11 +14,7 @@ pub struct RoadGraph {
 
 impl RoadGraph {
   pub fn new() -> Self {
-    Self {
-      node_map: HashMap::new(),
-      nodes: Vec::new(),
-      additional_nodes_num: 0
-    }
+    Self::default()
   }
   pub fn node<'a, 'b>(&'a self, id: NodeId) -> &'b Node {
     unsafe { std::mem::transmute::<_, &'b Node>(self.nodes.get(id.0).unwrap()) }
@@ -87,7 +83,7 @@ impl RoadGraph {
   }
 
   pub fn node_id_by_osm_id(&self, id: u64) -> Option<NodeId> {
-    self.node_map.get(&id).map(|v| *v)
+    self.node_map.get(&id).copied()
   }
 
   fn reset_graph(&mut self) {

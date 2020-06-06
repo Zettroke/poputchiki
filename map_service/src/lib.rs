@@ -26,7 +26,7 @@ pub fn distance(n1: &Node, n2: &Node) -> u32 {
   let a = (dlat/2.).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon/2.).sin().powi(2);
   let c = 2. * (a.sqrt()).atan2((1.-a).sqrt());
 
-  return (c * 6_371_302_00.0).round() as u32; // cm
+  (c * 637_130_200.0).round() as u32 // cm
 }
 
 /// distance in milliseconds
@@ -71,7 +71,7 @@ impl PathResultObject {
     d.set_item("total_time", self.total_time)?;
     d.set_item("points", &self.points.iter().map(|p| {
       let v = (p.as_ref(py) as &PyCell<MapPoint>).borrow();
-      v.to_json(py.clone())
+      v.to_json(py)
     }).collect::<PyResult<Vec<&PyDict>>>()?)?;
     d.set_item("eta_list", &self.eta_list)?;
 
@@ -213,6 +213,7 @@ impl From<&Node> for MapPoint {
 }
 
 #[pyclass]
+#[derive(Default)]
 pub struct MapService {
   pub nodes: HashMap<u64, OsmNode>,
   pub ways: HashMap<u64, OsmWay>,
@@ -223,11 +224,7 @@ pub struct MapService {
 impl MapService {
   #[new]
   pub fn new() -> Self {
-    Self {
-      nodes: HashMap::new(),
-      ways: HashMap::new(),
-      graph: RoadGraph::new()
-    }
+    Self::default()
   }
 
   pub fn load(&mut self, path: String) {
@@ -281,7 +278,7 @@ impl MapService {
     let mut plain_car_paths = Vec::new();
 
     let tmp: Vec<Vec<PyRef<MapPoint>>> = car_paths.iter()
-        .map(|p| p.points(py.clone()))
+        .map(|p| p.points(py))
         .collect::<PyResult<Vec<_>>>()?;
 
     for a in tmp.iter() {
