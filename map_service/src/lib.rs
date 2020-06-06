@@ -281,10 +281,10 @@ impl MapService {
         .map(|p| p.points(py))
         .collect::<PyResult<Vec<_>>>()?;
 
-    for a in tmp.iter() {
+    for a in car_paths.iter().zip(tmp.iter()) {
       let pmcp = PlainMapCarPath {
-        start_at,
-        path: a.iter().map(|v| v.deref()).collect()
+        start_at: a.0.start_at,
+        path: a.1.iter().map(|v| v.deref()).collect()
       };
       plain_car_paths.push(pmcp);
     }
@@ -355,7 +355,7 @@ impl MapService {
     let st = std::time::Instant::now();
     for p in car_paths.iter() {
       let first_point = p.path.first().unwrap().deref();
-      let mut prev_car_eta = p.start_at - start_at;
+      let mut prev_car_eta = (p.start_at - start_at) * 1000;
       let mut prev_node_id = self.graph.add_car_map_point(first_point, 255);
 
       self.graph.set_node_eta(prev_node_id, prev_car_eta);
@@ -374,19 +374,19 @@ impl MapService {
           Kmh(50)
         ) as i64;
 
-        // connect to prev TODO: connect one way
-        self.graph.connect_two_way(
-          curr_node_id,
-          prev_node_id,
-          (curr_car_eta - prev_car_eta) as u32
-        );
-
         self.graph.set_node_eta(curr_node_id, curr_car_eta);
         // connect to road node
         self.graph.connect_two_way(
           curr_node_id,
           *self.graph.node_map.get(&curr_point.id).unwrap(),
           ROAD_TO_CAR
+        );
+
+        // connect to prev TODO: connect one way
+        self.graph.connect_two_way(
+          curr_node_id,
+          prev_node_id,
+          (curr_car_eta - prev_car_eta) as u32
         );
 
         prev_car_eta = curr_car_eta;

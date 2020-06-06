@@ -185,7 +185,7 @@ impl RoadGraph {
             for link in curr_node.nodes.iter() {
               let n = self.node(link.node);
 
-              if n.eta == curr_node.eta.overflowing_sub(link.len).0 {
+              if n.eta < curr_node.eta && n.eta == curr_node.eta.overflowing_sub(link.len).0 {
                 trace!("id: {} kind: {:?} eta: {} = {} link_len: {}", n.id, n.kind, n.eta, curr_node.eta.overflowing_sub(link.len).0, link.len);
 
                 curr_node = n;
@@ -199,28 +199,29 @@ impl RoadGraph {
           NodeKind::Car {eta, ..} => {
             for link in curr_node.nodes.iter() {
               let n = self.node(link.node);
+              if n.eta < curr_node.eta {
+                match n.kind {
+                  NodeKind::Plain => {
+                    if n.eta == curr_node.eta.overflowing_sub(link.len + (eta - n.eta as i64) as u32).0 && path[path.len() - 2].id != n.id {
+                      trace!("id: {} kind: {:?} eta: {} = {} link_len: {}", n.id, n.kind, n.eta, curr_node.eta.overflowing_sub(link.len + (eta - n.eta as i64) as u32).0, link.len);
 
-              match n.kind {
-                NodeKind::Plain => {
-                  if n.eta == curr_node.eta.overflowing_sub(link.len + (eta - n.eta as i64) as u32).0 && path[path.len() - 2].id != n.id {
-                    trace!("id: {} kind: {:?} eta: {} = {} link_len: {}", n.id, n.kind, n.eta, curr_node.eta.overflowing_sub(link.len + (eta - n.eta as i64) as u32).0, link.len);
+                      curr_node = n;
+                      path.push(MapPoint::from(n));
+                      path_etas.push(n.eta);
 
-                    curr_node = n;
-                    path.push(MapPoint::from(n));
-                    path_etas.push(n.eta);
+                      continue 'main;
+                    }
+                  },
+                  NodeKind::Car { .. } => {
+                    if n.eta == curr_node.eta.overflowing_sub(link.len).0 {
+                      trace!("id: {} kind: {:?} eta: {} = {} link_len: {}", n.id, n.kind, n.eta, curr_node.eta.overflowing_sub(link.len + ROAD_TO_CAR).0, link.len);
 
-                    continue 'main;
-                  }
-                },
-                NodeKind::Car {..} => {
-                  if n.eta == curr_node.eta.overflowing_sub(link.len).0 {
-                    trace!("id: {} kind: {:?} eta: {} = {} link_len: {}", n.id, n.kind, n.eta, curr_node.eta.overflowing_sub(link.len + ROAD_TO_CAR).0, link.len);
+                      curr_node = n;
+                      path.push(MapPoint::from(n));
+                      path_etas.push(n.eta);
 
-                    curr_node = n;
-                    path.push(MapPoint::from(n));
-                    path_etas.push(n.eta);
-
-                    continue 'main;
+                      continue 'main;
+                    }
                   }
                 }
               }

@@ -21,7 +21,7 @@
     let mapOptions = {
         center: [55.75222, 37.6155600],
         zoom: 10
-    }
+    };
     let map = new L.map('map', mapOptions);
     let layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     map.addLayer(layer);
@@ -71,7 +71,11 @@
 
     $('#submit-path').on('submit', e => {
         if (current_path) {
-            $('#input-data').val(JSON.stringify(current_path));
+            $('#input-data').val(JSON.stringify({
+                path: current_path.points,
+                starts_at: new Date().toISOString(),
+                ends_at: new Date().toISOString()
+            }));
         } else {
             e.preventDefault();
         }

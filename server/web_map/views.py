@@ -1,9 +1,9 @@
-from datetime import datetime
-
 from django.http import HttpResponse, HttpRequest, HttpResponseBadRequest, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 import json
 from web_map.map_manager import MapPoint, MapManager
@@ -82,10 +82,10 @@ def path_publish(req: HttpRequest):
         return render(req, 'map_view.html', {'soma_data': 'kappa'})
     elif req.method == 'POST':
         data = json.loads(req.POST['data'])
-        path_points = [MapPoint(v.get('id', 0), v['lat'], v['lon']) for v in data]
+        path_points = [MapPoint(v.get('id', 0), v['lat'], v['lon']) for v in data['path']]
         if any([p.id == 0 for p in path_points]):
             return HttpResponseBadRequest('osm node id 0 is forbidden!!')
-        user_path = UserPath.objects.create(user=req.user, starts_at=datetime.now(), ends_at=datetime.now())
+        user_path = UserPath.objects.create(user=req.user, starts_at=timezone.now(), ends_at=timezone.now())
         PathPoint.objects.bulk_create([
             PathPoint(osm_id=p.id, lat=p.lat, lon=p.lon, user_path=user_path) for p in path_points
         ], batch_size=200)
@@ -109,11 +109,14 @@ def build_path(req: HttpRequest):
 @csrf_exempt
 def build_user_path(req: HttpRequest):
     if req.method == 'POST':
-        points = [MapPoint(v.get('id', 0), v['lat'], v['lon']) for v in json.loads(req.body)]
+        points_json = json.loads(req.POST['points'])
+        start_at = parse_datetime(req.POST.get('start_at', timezone.now().isoformat()))
+
+        points = [MapPoint(v.get('id', 0), v['lat'], v['lon']) for v in points_json]
 
         paths = list(p for p in UserPath.objects.all().prefetch_related('points').order_by('id').reverse())
 
-        path = MapManager.get_service().build_path_using_cars(0, points, [p.to_car_path() for p in paths])
+        path = MapManager.get_service().build_path_using_cars(round(start_at.timestamp()), points, [p.to_car_path() for p in paths])
 
         return JsonResponse({'car_paths': [p.to_json() for p in paths], 'path': path.to_json()}, safe=False)
     return HttpResponseBadRequest()
