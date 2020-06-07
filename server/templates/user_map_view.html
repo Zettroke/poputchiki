@@ -7,16 +7,28 @@
 {% block head %}
     <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
     <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 {% endblock %}
 {% block content %}
 
     <div id="map" style="width: 900px; height: 580px"></div>
-<input id="date" type="date">
-<input id="time" type="time">
+
+    <input id="flatpickr">
 
 <script>
-    const date_input = $('#date');
-    const time_input = $('#time');
+    const flatpickr_object = $('#flatpickr').flatpickr({
+        enableTime: true,
+        dateFormat: "Y-m-d H:i",
+        defaultDate: new Date(),
+        time_24hr: true,
+        minuteIncrement: 1,
+        onChange: () => {
+            buildPath()
+        }
+    });
+
     let colors = [
         '#FF6633', '#FF33FF', '#00B3E6', '#E6B333',
         '#3366E6', '#B34D4D', '#E6B3B3', '#6680B3',
@@ -93,9 +105,9 @@
     async function buildPath() {
         let path = collectPath();
         if (path.length > 1) {
+
             let form = new FormData();
-            let date = new Date(date_input.val() + ' ' + time_input.val());
-            form.append('start_at', date.toISOString());
+            form.append('start_at', flatpickr_object.selectedDates[0].toISOString());
             form.append('points', JSON.stringify(path));
 
             let result = await (await fetch('{% url 'build_user_path' %}', {
@@ -129,12 +141,5 @@
     }
 
     requestPaths();
-
-    let d = new Date();
-    date_input.val(d.toISOString().substr(0, 10));
-    time_input.val(d.toTimeString().substr(0, 8));
-
-    date_input.change(buildPath);
-    time_input.change(buildPath);
 </script>
 {% endblock %}

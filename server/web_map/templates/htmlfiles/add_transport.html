@@ -1,17 +1,16 @@
-<html>
-  <head>
-    <title>Make the way</title>
+{% extends 'base.html' %}
+{% block title %}Make the way{% endblock %}
+{% block content %}
     <style>
-      body 
+      body
 	  {
         background: #000 url(https://images.hdqwalls.com/download/dark-blue-green-gradient-4k-i4-3840x2400.jpg);
-        color: #fff; 
+        color: #fff;
       }
     </style>
-  </head>
-  <body>
+
     <h1>Add transport</h1>
-    <form method="post">
+    <form id="input" method="post">
 	  {% csrf_token %}
       <p><b>Car model:</b><br>
       <input required type="text" size="40" name="model" list = "list1">
@@ -34,7 +33,7 @@
       <input required type="text" name="car_number" size="12">
       </p>
       <p><b>Free places:</b><br>
-      <input required type="number" name="place" step="1" min="1" max="10" list = "list2" size="10" value="1">
+      <input required type="number" name="place" step="1" min="1" max="10" list = "list2" size="10">
       <datalist id="list2">
         <option value="1" label="1">
         <option value="2" label="2">
@@ -42,7 +41,7 @@
         <option value="4" label="4">
         <option value="5" label="5">
       </datalist>
-      <p><b>Additional function:</b><Br>
+      <p><b>Additional function:</b><br>
       <input type="checkbox" name="option" value="smoking">May smoking   <Br>
       <input type="checkbox" name="option" value="music">May play music <Br>
       <input type="checkbox" name="option" value="dog">With dog  <Br>
@@ -56,6 +55,12 @@
       <input type="reset" value="Abort"></p>
     </form>
 	<br>
-	<a href="/main">Back to main page!<a>
-  </body>
-</html>
+	<a href="{% url 'main' %}">Back to main page!</a>
+    <script>
+        $('#input').on('keydown', ev => {
+           if (ev.key === 'Enter') {
+               ev.preventDefault();
+           }
+        });
+    </script>
+{% endblock %}

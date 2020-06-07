@@ -14,14 +14,17 @@ pub mod osm_map;
 pub mod graph;
 pub mod utils;
 
+pub trait EarthPoint {
+  fn lat(&self) -> f64;
+  fn lon(&self) -> f64;
+}
+
 /// distance in centimeters
-pub fn distance(n1: &Node, n2: &Node) -> u32 {
-  let lat1 = n1.lat.to_radians();
-  let lat2 = n2.lat.to_radians();
-  let lon1 = n1.lon.to_radians();
-  let lon2 = n2.lon.to_radians();
+pub fn distance<T: EarthPoint>(n1: &T, n2: &T) -> u32 {
+  let lat1 = n1.lat().to_radians();
+  let lat2 = n2.lat().to_radians();
   let dlat = lat2 - lat1;
-  let dlon = lon2 - lon1;
+  let dlon = n2.lon().to_radians() - n1.lon().to_radians();
 
   let a = (dlat/2.).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon/2.).sin().powi(2);
   let c = 2. * (a.sqrt()).atan2((1.-a).sqrt());
@@ -30,7 +33,7 @@ pub fn distance(n1: &Node, n2: &Node) -> u32 {
 }
 
 /// distance in milliseconds
-pub fn distance_t(n1: &Node, n2: &Node, speed: Kmh) -> u32 {
+pub fn distance_t<T: EarthPoint>(n1: &T, n2: &T, speed: Kmh) -> u32 {
   let cm = distance(n1, n2);
   (cm as f64 / speed.as_cm_per_millisecond()).round() as u32
 }
@@ -59,9 +62,13 @@ pub struct PathResultObject {
   #[pyo3(get)]
   pub total_time: u32,
   #[pyo3(get)]
+  pub total_distance: u32,
+  #[pyo3(get)]
   pub points: Vec<Py<MapPoint>>,
   #[pyo3(get)]
-  pub eta_list: Vec<u32>
+  pub eta_list: Vec<u32>,
+  #[pyo3(get)]
+  pub distance_list: Vec<u32>
 }
 #[pymethods]
 impl PathResultObject {
@@ -69,11 +76,13 @@ impl PathResultObject {
     let d = PyDict::new(py);
 
     d.set_item("total_time", self.total_time)?;
+    d.set_item("total_distance", self.total_distance)?;
     d.set_item("points", &self.points.iter().map(|p| {
       let v = (p.as_ref(py) as &PyCell<MapPoint>).borrow();
       v.to_json(py)
     }).collect::<PyResult<Vec<&PyDict>>>()?)?;
     d.set_item("eta_list", &self.eta_list)?;
+    d.set_item("distance_list", &self.distance_list)?;
 
     Ok(d)
   }
@@ -83,7 +92,9 @@ impl PathResultObject {
   pub fn from_path_result(py: Python, pr: PathResult) -> Self {
     Self {
       total_time: pr.total_time,
+      total_distance: pr.total_distance,
       eta_list: pr.eta_list,
+      distance_list: pr.distance_list,
       points: pr.points.into_iter().map(|p| Py::new(py, p).unwrap()).collect()
     }
   }
@@ -92,8 +103,10 @@ impl PathResultObject {
 #[derive(Debug, Default, Serialize)]
 pub struct PathResult {
   pub total_time: u32,
+  pub total_distance: u32,
   pub points: Vec<MapPoint>,
-  pub eta_list: Vec<u32>
+  pub eta_list: Vec<u32>,
+  pub distance_list: Vec<u32>
 }
 
 #[pyclass]
@@ -157,6 +170,16 @@ pub struct MapPoint {
   pub lon: f64,
   #[pyo3(get)]
   pub path_id: Option<u64>
+}
+
+impl EarthPoint for MapPoint {
+  fn lat(&self) -> f64 {
+    self.lat
+  }
+
+  fn lon(&self) -> f64 {
+    self.lon
+  }
 }
 
 #[pymethods]
@@ -310,13 +333,16 @@ impl MapService {
     let mut path_result = PathResult {
       points: vec![MapPoint::from(self.nodes.get(&start_node_id).unwrap())],
       eta_list: vec![0],
-      total_time: 0
+      distance_list: vec![0],
+      total_time: 0,
+      total_distance: 0
     };
 
     for cl in closest.iter().skip(1) {
       let curr = self.graph.node_id_by_osm_id(cl.id).unwrap();
       let pr = self.graph.shortest_path(prev, curr);
       let prev_total_time = path_result.total_time;
+      let prev_total_distance = path_result.total_distance;
 
       path_result.points.extend(
         pr.points.into_iter().skip(1)
@@ -324,7 +350,12 @@ impl MapService {
       path_result.eta_list.extend(
         pr.eta_list.into_iter().skip(1).map(|t| prev_total_time + t)
       );
+      path_result.distance_list.extend(
+        pr.distance_list.into_iter().skip(1).map(|t| prev_total_distance + t)
+      );
+
       path_result.total_time = prev_total_time + pr.total_time;
+      path_result.total_distance = prev_total_time + pr.total_distance;
 
       prev = curr;
     }

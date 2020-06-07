@@ -19,8 +19,9 @@ def index(req):
 def map_view(req):
     return render(req, 'map_view.html', {'soma_data': 'kappa'})
 
+
 @csrf_exempt
-def registratioт(req):
+def registration(req):
     name = req.POST.get("name", "")
     email = req.POST.get("email", "")
     pas1 = req.POST.get("password1", "")
@@ -38,27 +39,22 @@ def registratioт(req):
     else:
         return render(req, "htmlfiles/registration.html", {'message':""})
 
+
 @login_required
 @csrf_exempt
 def add_transport(req):
-    print(req.user.username)
     if req.method == 'POST':
         new_transport = Transport()
+        new_transport.name = req
         new_transport.model = req.POST.get("model", "")
         new_transport.car_number = req.POST.get("car_number", "")
         new_transport.place = req.POST.get("place", 1)
-        if "smoking" in req.POST.get("option", []):
-            new_transport.option1 = True
-        else:
-            new_transport.option1 = False
-        if "music" in req.POST.get("option", []):
-            new_transport.option2 = True
-        else:
-            new_transport.option2 = False
-        if "dog" in req.POST.get("option", []):
-            new_transport.option3 = True
-        else:
-            new_transport.option3 = False
+
+        option = req.POST.getlist("option")
+        new_transport.can_smoke = "smoking" in option
+        new_transport.can_play_music = "music" in option
+        new_transport.animals_allowed = "dog" in option
+
         new_transport.contact = req.POST.get("contact_data", "")
         new_transport.comment = req.POST.get("comment", "")
         new_transport.user = req.user
@@ -66,10 +62,12 @@ def add_transport(req):
         return HttpResponseRedirect("/main")
     return render(req, "htmlfiles/add_transport.html")
 
+
 @login_required
 def show_my_transport(req):
     transport = Transport.objects.all().filter(user=req.user)
     return render(req, "htmlfiles/show_transport.html", {'transports': transport})
+
 
 @login_required
 def main(req):

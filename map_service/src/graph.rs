@@ -1,7 +1,7 @@
 use std::collections::{BinaryHeap, HashMap};
 use serde::Serialize;
 use std::cmp::Ordering;
-use crate::{MapPoint, distance_t, Kmh, PathResult};
+use crate::{MapPoint, distance_t, Kmh, PathResult, EarthPoint, distance};
 
 pub const ROAD_TO_CAR: u32 = 1000;
 
@@ -235,10 +235,18 @@ impl RoadGraph {
       path.reverse();
       path_etas.reverse();
 
+      let path_distances = path.iter().zip(path.iter().skip(1))
+        .fold(vec![0], |mut acc, (prev, next)| {
+          acc.push(*acc.last().unwrap() + (distance(prev, next) as f32 / 100.0).round() as u32);
+          acc
+        });
+
       PathResult {
         total_time: *path_etas.last().unwrap(),
+        total_distance: *path_distances.last().unwrap(),
         points: path,
-        eta_list: path_etas
+        eta_list: path_etas,
+        distance_list: path_distances,
       }
     };
 
@@ -281,6 +289,15 @@ pub struct Node {
   pub id: u64,
   pub lon: f64,
   pub lat: f64
+}
+impl EarthPoint for Node {
+  fn lat(&self) -> f64 {
+    self.lat
+  }
+
+  fn lon(&self) -> f64 {
+    self.lon
+  }
 }
 
 #[derive(Debug, Serialize)]

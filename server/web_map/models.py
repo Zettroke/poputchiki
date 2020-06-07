@@ -6,11 +6,26 @@ from django.db import models
 from web_map.map_manager import MapPoint, MapCarPath
 
 
+class Transport(models.Model):
+    name = models.CharField(max_length=255, default='Без названия')
+    model = models.CharField(max_length=41)
+    car_number = models.CharField(max_length=13)
+    place = models.IntegerField()
+    can_smoke = models.BooleanField()
+    can_play_music = models.BooleanField()
+    animals_allowed = models.BooleanField()
+    contact = models.CharField(max_length=41)
+    comment = models.CharField(max_length=200)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+
 class UserPath(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='paths')
 
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
+
+    transport = models.ForeignKey(Transport, on_delete=models.CASCADE)
 
     def to_json(self):
         return {
@@ -21,18 +36,6 @@ class UserPath(models.Model):
 
     def to_car_path(self):
         return MapCarPath(round(self.starts_at.timestamp()), [p.to_map_point() for p in self.points.all()])
-
-
-class Transport(models.Model):
-    model = models.CharField(max_length=41)
-    car_number = models.CharField(max_length=13)
-    place = models.IntegerField()
-    option1 = models.BooleanField()
-    option2 = models.BooleanField()
-    option3 = models.BooleanField()
-    contact = models.CharField(max_length=41)
-    comment = models.CharField(max_length=200)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
 class PathPoint(models.Model):
