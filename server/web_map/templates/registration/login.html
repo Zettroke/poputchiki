@@ -1,10 +1,11 @@
+{% extends 'base.html' %}
 
-{% block content %}  
-  
-<html>
-  <head>
+{% block title %}
+login
+{% endblock title %}
+
+{% block head %}
     <link rel="shortcut icon" href="C:\Users\79154\Downloads\travel_icon_142598.ico" type="image/x-icon">
-    <title>login</title>
     <style>
 
       button.my_button 
@@ -21,8 +22,9 @@
         color: #fff; 
       }
     </style>
-  </head>
-  <body>
+{% endblock head %} 
+
+{% block content %}
     <h1>Enter to account</h1>
     <div class = "my_div">
       <form method="post" >
@@ -54,8 +56,4 @@
       {% endif %}
     {% endif %}
 	<a href="/registration"> Need registration? Click here!</a>
-
-  </body>
-</html>
-  
-{% endblock %}
+{% endblock content %}
