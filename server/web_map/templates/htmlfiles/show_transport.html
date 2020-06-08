@@ -1,18 +1,21 @@
-<!DOCTYPE html>
-<html>
-  <head>
+{% extends 'base.html' %}
+
+{% block title %}
+my transport
+{% endblock title %}
+
+{% block head %}
     <meta charset="utf-8">
-    <title>my transport</title>
-	<style>
+     <style>
     body 
 	  {
       background: #000 url(https://images.hdqwalls.com/download/dark-blue-green-gradient-4k-i4-3840x2400.jpg);
       color: #fff; 
       }
 	</style>
-  </head>
- 
-  <body>
+{% endblock head %} 
+
+{% block content %}
   <h1>Transport</h1>
   <ul id="navbar">
       {% for tr in transports %}
@@ -26,5 +29,4 @@
       {% endfor %}
   </ul>
   <a href="/main">Back to main page!<a>
-  </body>
-</html>
+{% endblock content %}

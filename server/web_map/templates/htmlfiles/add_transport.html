@@ -1,14 +1,20 @@
 {% extends 'base.html' %}
-{% block title %}Make the way{% endblock %}
-{% block content %}
+
+{% block title %}
+Make the way
+{% endblock title %}
+
+{% block head %}
     <style>
-      body
+      body 
 	  {
         background: #000 url(https://images.hdqwalls.com/download/dark-blue-green-gradient-4k-i4-3840x2400.jpg);
-        color: #fff;
+        color: #fff; 
       }
     </style>
+{% endblock head %}
 
+{% block content %}
     <h1>Add transport</h1>
     <form id="input" method="post">
 	  {% csrf_token %}
