@@ -35,7 +35,7 @@ class UserPath(models.Model):
         }
 
     def to_car_path(self):
-        return MapCarPath(round(self.starts_at.timestamp()), [p.to_map_point() for p in self.points.all()])
+        return MapCarPath(self.id, round(self.starts_at.timestamp()), [p.to_map_point() for p in self.points.all()])
 
 
 class PathPoint(models.Model):

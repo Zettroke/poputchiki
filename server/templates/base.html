@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}Poputchiki{% endblock title %}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
     <script
       src="https://code.jquery.com/jquery-3.5.1.js"
       integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc="
@@ -31,23 +35,39 @@
                 })
             });
         }
+
+        function formatPathTime(t) {
+            let v = Math.round(t/1000);
+            let sec = v % 60;
+            let minute = Math.floor(v / 60) % 60;
+            let hour = Math.floor(v / 60 / 60);
+
+            let res = '';
+            if (hour) {
+                res += hour + 'ч. ';
+            }
+            if (minute) {
+                res += minute + 'мин. ';
+            }
+            res += sec + 'сек.';
+
+            return res;
+        }
+
+        function formatPathLen(l) {
+            let kilometers = Math.floor(l / 1000);
+            let meters = l % 1000;
+
+            let res = '';
+            if (kilometers) {
+                res += kilometers + 'км. ';
+            }
+            res += meters + 'м.';
+            return res;
+        }
+
     </script>
     <style>
-        a.nubex
-        {
-        color: #fff;
-        user-select: none;
-        text-decoration: none;
-        outline: none;
-        background-color: #fa8e47;
-        padding: 1em 2em;
-        }
-        a.nubex:active {
-        background-color: #ee6206;
-        }
-        a.nubex:hover {
-        background-color: #f97f2e;
-        }
         body {
             margin: 0;
         }
@@ -63,16 +83,21 @@
     {% block head %} {% endblock head %}
 </head>
 <body>
-    <h3>Map for your route<h3>
-    <p></p>
-    <a href="#" class="nubex">Add a route</a>
-    <a href="#" class="nubex">Set a route</a>
-    <a href="#" class="nubex">Your account</a>
-    <p></p>
-    <p></p>
-    <div style="height: 100%">
+<div style="height: 100%; display: flex; flex-direction: column">
+     <nav>
+        <div class="nav-wrapper">
+          <a href="#" class="brand-logo right">Logo</a>
+          <ul id="nav-mobile" class="left">
+            <li><a href="{% url 'map' %}">Опубликовать маршрут</a></li>
+            <li><a href="{% url 'user_map_view' %}">Построить свой маршрут</a></li>
+            <li><a href="{% url 'my_transport' %}">Мой транспорт</a></li>
+          </ul>
+        </div>
+      </nav>
+    <div style="flex: 1">
     {% block content %}{% endblock content %}
     </div>
+</div>
 
 <!-- Some footer -->
 </body>

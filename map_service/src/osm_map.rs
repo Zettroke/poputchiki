@@ -7,6 +7,7 @@ use flate2::read::GzDecoder;
 use std::fs::File;
 use quick_xml::Reader;
 use std::collections::HashMap;
+use crate::TransportKind;
 
 pub struct OsmNode(pub Rc<InnerNode>);
 
@@ -38,7 +39,7 @@ impl OsmNode {
     }))
   }
 }
-
+#[derive(Clone)]
 pub struct OsmWay(Rc<InnerWay>);
 
 impl Deref for OsmWay {
@@ -57,12 +58,12 @@ impl DerefMut for OsmWay {
 }
 
 impl OsmWay {
-  pub fn new(id: u64, s: String) -> Self {
+  pub fn new(id: u64) -> Self {
     Self(
       Rc::new(InnerWay {
         id,
         nodes: Vec::new(),
-        highway_type: s
+        road_kind: TransportKind::Car
       })
     )
   }
@@ -71,7 +72,7 @@ impl OsmWay {
 pub struct InnerWay {
   pub id: u64,
   pub nodes: Vec<OsmNode>,
-  pub highway_type: String
+  pub road_kind: TransportKind
 }
 
 pub fn load(path: String) -> (HashMap<u64, OsmNode>, HashMap<u64, OsmWay>) {
@@ -99,7 +100,7 @@ pub fn load(path: String) -> (HashMap<u64, OsmNode>, HashMap<u64, OsmWay>) {
               id = u64_parse(res.unwrap().value.as_ref());
             }
 
-            current_way = Some(OsmWay::new(id, "".to_string()));
+            current_way = Some(OsmWay::new(id));
           }
           _ => {}
         }
@@ -140,7 +141,8 @@ pub fn load(path: String) -> (HashMap<u64, OsmNode>, HashMap<u64, OsmWay>) {
                     b"v" => {
                       if is_current_tag_highway {
                         is_current_way_highway = true;
-                        way.highway_type = String::from_utf8(a.value.to_vec()).unwrap();
+
+                        way.road_kind = TransportKind::from(std::str::from_utf8(a.value.as_ref()).unwrap());
                       }
                     },
                     _ => {}

@@ -13,9 +13,20 @@
 {% endblock %}
 {% block content %}
 
-    <div id="map" style="width: 900px; height: 580px"></div>
+    <div style="display: flex; height: 100%">
+        <div id="map" style="flex: 3; height: 100%"></div>
+        <div style="flex: 1; padding-left: 8px">
+            <h4>Поиск маршрута</h4>
 
-    <input id="flatpickr">
+            <label for="time-input">Время отправления:</label><input id="flatpickr">
+            <input id="input-data" type="hidden" name="data">
+            <hr>
+            <div>Время в пути: <span id="travel-time">-</span></div>
+            <div>Дистанция: <span id="travel-distance">-</span></div>
+            <hr>
+{#            <button id="submit-path" class="btn-large red" type="submit">Опубликовать<i class="material-icons right">send</i></button>#}
+        </div>
+    </div>
 
 <script>
     const flatpickr_object = $('#flatpickr').flatpickr({
@@ -30,15 +41,15 @@
     });
 
     let colors = [
-        '#FF6633', '#FF33FF', '#00B3E6', '#E6B333',
-        '#3366E6', '#B34D4D', '#E6B3B3', '#6680B3',
-        '#FF1A66', '#E6331A', '#66994D', '#B366CC',
-        '#4D8000', '#B33300', '#66664D', '#991AFF',
-        '#4DB3FF', '#1AB399', '#E666B3', '#33991A',
-        '#809980', '#999933', '#FF3380', '#4D80CC',
-        '#9900B3', '#E64D66', '#FF4D4D', '#99E6E6',
-        '#6666FF'
+        '#b71c1c', '#880e4f', '#4a148c', '#311b92',
+        '#1a237e', '#01579b', '#827717', '#1b5e20',
+        '#FF1A66', '#f57f17', '#66994D', '#B366CC',
+        '#4D8000', '#B33300', '#e65100', '#4db3ff',
+        '#1ab399', '#E666B3', '#33991A', '#999933',
+        '#FF3380', '#4D80CC', '#9900B3', '#E64D66',
+        '#FF4D4D', '#6666FF'
     ].sort(() => Math.random() - 0.5);
+
     let mapOptions = {
         center: [55.75222, 37.6155600],
         zoom: 10
@@ -102,6 +113,8 @@
 
     let current_path_polylines = []
     let current_path;
+
+    let fragments = [];
     async function buildPath() {
         let path = collectPath();
         if (path.length > 1) {
@@ -114,13 +127,15 @@
                 method: 'POST',
                 body: form
             })).json();
+            current_path = result.path;
 
             current_path_polylines.forEach(l => map.removeLayer(l));
             current_path_polylines = [];
+            fragments = [];
 
-            let path_id = result.path.points[0].path_id;
+            let path_id = current_path.points[0].path_id;
             let buff = [];
-            for (const p of result.path.points) {
+            for (const p of current_path.points) {
                 if (p.path_id === path_id) {
                     buff.push([p.lat, p.lon]);
                 } else {
@@ -137,6 +152,9 @@
                 );
             }
             current_path_polylines.forEach(l => map.addLayer(l));
+
+            $('#travel-time').text(formatPathTime(current_path.total_time));
+            $('#travel-distance').text(formatPathLen(current_path.total_distance));
         }
     }
 

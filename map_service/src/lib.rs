@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use crate::osm_map::{OsmNode, OsmWay};
 use crate::graph::{RoadGraph, Node, NodeKind, ROAD_TO_CAR};
 use pyo3::types::PyDict;
@@ -9,10 +9,65 @@ use serde::Serialize;
 use std::rc::Rc;
 
 #[macro_use] extern crate log;
+#[macro_use] extern crate lazy_static;
 
 pub mod osm_map;
 pub mod graph;
 pub mod utils;
+
+lazy_static! {
+    static ref PEDESTRIAN_HIGHWAY: HashSet<&'static str> = {
+        let mut set = HashSet::new();
+        set.insert("footway");
+        set.insert("construction");
+        set.insert("bridleway");
+        set.insert("steps");
+        set.insert("corridor");
+        set.insert("path");
+        set.insert("cycleway");
+        set
+    };
+}
+
+#[derive(Debug, Copy, Clone, Serialize)]
+pub enum TransportKind {
+  Foot,
+  Car
+}
+
+impl TransportKind {
+  pub fn get_speed(&self) -> Kmh {
+    match self {
+      TransportKind::Foot => Kmh(5),
+      TransportKind::Car => Kmh(50)
+    }
+  }
+
+  pub fn is_foot(&self) -> bool {
+    if let TransportKind::Foot = self {
+      true
+    } else {
+      false
+    }
+  }
+  pub fn is_car(&self) -> bool {
+    if let TransportKind::Car = self {
+      true
+    } else {
+      false
+    }
+  }
+}
+
+impl From<&str> for TransportKind {
+  fn from(s: &str) -> Self {
+    return if PEDESTRIAN_HIGHWAY.contains(s) {
+      TransportKind::Foot
+    } else {
+      TransportKind::Car
+    }
+  }
+}
 
 pub trait EarthPoint {
   fn lat(&self) -> f64;
@@ -52,6 +107,7 @@ impl Kmh{
 }
 
 pub struct PlainMapCarPath<'a> {
+  pub id: u64,
   pub start_at: i64,
   pub path: Vec<&'a MapPoint>
 }
@@ -87,7 +143,6 @@ impl PathResultObject {
     Ok(d)
   }
 }
-
 impl PathResultObject {
   pub fn from_path_result(py: Python, pr: PathResult) -> Self {
     Self {
@@ -113,6 +168,8 @@ pub struct PathResult {
 #[derive(Debug)]
 pub struct MapCarPath {
   #[pyo3(get)]
+  id: u64,
+  #[pyo3(get)]
   start_at: i64,
   #[pyo3(get)]
   path: Vec<Py<MapPoint>>
@@ -121,8 +178,9 @@ pub struct MapCarPath {
 #[pymethods]
 impl MapCarPath {
   #[new]
-  pub fn new(start_at: i64, path: Vec<Py<MapPoint>>) -> Self {
+  pub fn new(id: u64, start_at: i64, path: Vec<Py<MapPoint>>) -> Self {
     Self {
+      id,
       start_at,
       path
     }
@@ -230,7 +288,7 @@ impl From<&Node> for MapPoint {
       id: n.id,
       lat: n.lat,
       lon: n.lon,
-      path_id: if let NodeKind::Car {..} = n.kind {Some(1)} else {None}
+      path_id: if let NodeKind::Car {path_id, ..} = n.kind { Some(path_id) } else { None }
     }
   }
 }
@@ -240,7 +298,8 @@ impl From<&Node> for MapPoint {
 pub struct MapService {
   pub nodes: HashMap<u64, OsmNode>,
   pub ways: HashMap<u64, OsmWay>,
-  pub graph: RoadGraph
+  pub graph: RoadGraph,
+  pub node_ways: HashMap<u64, Vec<OsmWay>>
 }
 
 #[pymethods]
@@ -254,6 +313,12 @@ impl MapService {
     let (nodes, ways) = crate::osm_map::load(path);
     self.nodes = nodes;
     self.ways = ways;
+
+    for w in self.ways.values() {
+      for n in w.nodes.iter() {
+        self.node_ways.entry(n.id).or_insert(Vec::new()).push(w.clone());
+      }
+    }
 
     let cnt = self.nodes.values().filter(|v| Rc::strong_count(&v.0) == 2).count();
     warn!("useless nodes: {}/{}", cnt, self.nodes.len());
@@ -280,7 +345,8 @@ impl MapService {
         self.graph.connect_two_way(
           prev_node_id,
           curr_node_id,
-          distance_t(self.graph.node(prev_node_id), self.graph.node(curr_node_id), Kmh(5))
+          distance(self.graph.node(prev_node_id), self.graph.node(curr_node_id)),
+          way.road_kind
         );
 
         prev_node_id = curr_node_id;
@@ -306,6 +372,7 @@ impl MapService {
 
     for a in car_paths.iter().zip(tmp.iter()) {
       let pmcp = PlainMapCarPath {
+        id: a.0.id,
         start_at: a.0.start_at,
         path: a.1.iter().map(|v| v.deref()).collect()
       };
@@ -326,7 +393,7 @@ impl MapService {
   pub fn build_path_rust(&mut self, points: Vec<&MapPoint>) -> PathResult {
     let st = std::time::Instant::now();
 
-    let closest = self.get_closest_list(points);
+    let closest = self.get_closest_list(points, TransportKind::Car);
 
     let start_node_id = closest.get(0).unwrap().id;
     let mut prev = self.graph.node_id_by_osm_id(start_node_id).unwrap();
@@ -340,7 +407,7 @@ impl MapService {
 
     for cl in closest.iter().skip(1) {
       let curr = self.graph.node_id_by_osm_id(cl.id).unwrap();
-      let pr = self.graph.shortest_path(prev, curr);
+      let pr = self.graph.shortest_path(prev, curr, TransportKind::Car);
       let prev_total_time = path_result.total_time;
       let prev_total_distance = path_result.total_distance;
 
@@ -365,16 +432,21 @@ impl MapService {
     path_result
   }
 
-  fn get_closest_list(&self, points: Vec<&MapPoint>) -> Vec<ClosestNode> {
+  fn get_closest_list(&self, points: Vec<&MapPoint>, kind: TransportKind) -> Vec<ClosestNode> {
     let mut closest = vec![ClosestNode { id: 0, dist: f64::MAX }; points.len()];
 
     for (k, v) in self.nodes.iter() {
-      for (ind, point) in points.iter().enumerate() {
-        let mut cl = &mut closest[ind];
-        let d = (v.lat - point.lat).powi(2) + (v.lon - point.lon).powi(2);
-        if cl.dist > d {
-          cl.dist = d;
-          cl.id = *k;
+      if self.node_ways.get(k)
+        .map(|v| v.iter().any(|w| kind.is_foot() || kind.is_car() && w.road_kind.is_car()))
+        .unwrap_or(false)
+      {
+        for (ind, point) in points.iter().enumerate() {
+          let mut cl = &mut closest[ind];
+          let d = (v.lat - point.lat).powi(2) + (v.lon - point.lon).powi(2);
+          if cl.dist > d {
+            cl.dist = d;
+            cl.id = *k;
+          }
         }
       }
     }
@@ -387,49 +459,57 @@ impl MapService {
     for p in car_paths.iter() {
       let first_point = p.path.first().unwrap().deref();
       let mut prev_car_eta = (p.start_at - start_at) * 1000;
-      let mut prev_node_id = self.graph.add_car_map_point(first_point, 255);
+      let mut prev_car_dist = 0;
+      let mut prev_node_id = self.graph.add_car_map_point(first_point, 255, p.id);
 
-      self.graph.set_node_eta(prev_node_id, prev_car_eta);
+      self.graph.set_car_node_eta(prev_node_id, prev_car_eta);
       self.graph.connect_two_way(
         prev_node_id,
         *self.graph.node_map.get(&first_point.id).unwrap(),
-        ROAD_TO_CAR
+        ROAD_TO_CAR,
+        TransportKind::Foot
       );
 
       for curr_point in p.path.iter().skip(1) {
-        let curr_node_id = self.graph.add_car_map_point(curr_point, 255);
+        let curr_node_id = self.graph.add_car_map_point(curr_point, 255, p.id);
 
+        let curr_car_dist = prev_car_dist + distance(
+          self.graph.node(prev_node_id),
+          self.graph.node(curr_node_id)
+        ) as i64;
         let curr_car_eta = prev_car_eta + distance_t(
           self.graph.node(prev_node_id),
           self.graph.node(curr_node_id),
-          Kmh(50)
+            Kmh(50)
         ) as i64;
-
-        self.graph.set_node_eta(curr_node_id, curr_car_eta);
+        self.graph.set_car_node_eta(curr_node_id, curr_car_eta);
         // connect to road node
         self.graph.connect_two_way(
           curr_node_id,
           *self.graph.node_map.get(&curr_point.id).unwrap(),
-          ROAD_TO_CAR
+          ROAD_TO_CAR,
+          TransportKind::Foot
         );
 
         // connect to prev TODO: connect one way
         self.graph.connect_two_way(
           curr_node_id,
           prev_node_id,
-          (curr_car_eta - prev_car_eta) as u32
+          (curr_car_dist - prev_car_dist) as u32,
+          TransportKind::Car
         );
 
         prev_car_eta = curr_car_eta;
+        prev_car_dist = curr_car_dist;
         prev_node_id = curr_node_id;
       }
     }
 
-    let closest = self.get_closest_list(points);
+    let closest = self.get_closest_list(points, TransportKind::Foot);
     let n1 = *self.graph.node_map.get(&closest[0].id).unwrap();
     let n2 = *self.graph.node_map.get(&closest[1].id).unwrap();
 
-    let res = self.graph.shortest_path(n1, n2);
+    let res = self.graph.shortest_path(n1, n2, TransportKind::Foot);
 
     let en = std::time::Instant::now();
     info!("Build path in {}s.", (en - st).as_secs_f64());

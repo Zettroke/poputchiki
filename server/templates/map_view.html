@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block title %}
-    Publish path
+    Публикация маршрута
 {% endblock %}
 
 {% block head %}
@@ -10,17 +10,33 @@
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <style>
+    </style>
 {% endblock %}
 {% block content %}
 
     <div style="display: flex; height: 100%">
         <div id="map" style="flex: 3; height: 100%"></div>
         <div style="flex: 1; padding-left: 8px">
-            <h1>Публикация маршрута</h1>
-            <label for="time-input">Время отправления:</label><input id="time-input" style="margin-left: 16px">
-            <hr>
-            <div>Время в пути: <span id="travel-time">-</span></div>
-            <div>Дистанция: <span id="travel-distance">-</span></div>
+            <h4>Публикация маршрута</h4>
+            <form id="input-form" method="post" action="{% url 'path_publish' %}">
+                <label for="time-input">Время отправления:</label><input id="time-input" name="start_at">
+                <input id="input-data" type="hidden" name="data">
+                <hr>
+                <div>Время в пути: <span id="travel-time">-</span></div>
+                <div>Дистанция: <span id="travel-distance">-</span></div>
+                <hr>
+                <label>
+                    Ваш транспорт
+                    <select name="transport_id">
+                        {% for tr in transports %}
+                            <option value="{{ tr.id }}">{{ tr.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button id="submit-path" class="btn-large red" type="submit">Опубликовать<i class="material-icons right">send</i></button>
+            </form>
         </div>
     </div>
 
@@ -72,36 +88,6 @@
             return Object.values(markers).map(m => m.getLatLng()).map(m => ({lat: m.lat, lon: m.lng}));
         }
 
-        function formatPathTime(t) {
-            let v = Math.round(t/1000);
-            let sec = v % 60;
-            let minute = Math.floor(v / 60) % 60;
-            let hour = Math.floor(v / 60 / 60);
-
-            let res = '';
-            if (hour) {
-                res += hour + 'ч. ';
-            }
-            if (minute) {
-                res += minute + 'мин. ';
-            }
-            res += sec + 'сек.';
-
-            return res;
-        }
-
-        function formatPathLen(l) {
-            let kilometers = Math.floor(l / 1000);
-            let meters = l % 1000;
-
-            let res = '';
-            if (kilometers) {
-                res += kilometers + 'км. ';
-            }
-            res += meters + 'м.';
-            return res;
-        }
-
         let polyline;
         let current_path;
 
@@ -124,17 +110,16 @@
                 $('#travel-time').text('-');
             }
         }
-
-        $('#submit-path').on('submit', e => {
-            if (current_path) {
-                $('#input-data').val(JSON.stringify({
-                    path: current_path.points,
-                    starts_at: new Date().toISOString(),
-                    ends_at: new Date().toISOString()
-                }));
-            } else {
+        $('#input-form').on('keydown', e => {
+            if (e.key === 'Enter'){
                 e.preventDefault();
             }
+        }).on('submit', e => {
+            $('#input-data').val(JSON.stringify({
+                path: current_path.points,
+                starts_at: timepicker.selectedDates[0].toISOString(),
+                ends_at: timepicker.selectedDates[0].toISOString()
+            }))
         });
     </script>
 {% endblock %}
