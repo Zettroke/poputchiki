@@ -90,7 +90,7 @@ def path_publish(req: HttpRequest):
             PathPoint(osm_id=p.id, lat=p.lat, lon=p.lon, user_path=user_path) for p in path_points
         ], batch_size=200)
 
-        return HttpResponse()
+        return redirect('map')
 
 
 @csrf_exempt

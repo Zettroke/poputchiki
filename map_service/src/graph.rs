@@ -16,9 +16,11 @@ impl RoadGraph {
   pub fn new() -> Self {
     Self::default()
   }
+  /// uber unsafe :(
   pub fn node<'a, 'b>(&'a self, id: NodeId) -> &'b Node {
     unsafe { std::mem::transmute::<_, &'b Node>(self.nodes.get(id.0).unwrap()) }
   }
+  /// uber unsafe :(
   pub fn node_mut<'a, 'b>(&'a mut self, id: NodeId) -> &'b mut Node {
     unsafe { std::mem::transmute::<_, &'b mut Node>(self.nodes.get_mut(id.0).unwrap()) }
   }

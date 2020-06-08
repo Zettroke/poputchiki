@@ -83,6 +83,7 @@
                     fillOpacity: 0.6
                 }
             );
+            polyline.bindPopup(`<div>${new Date(user_path.starts_at)}</div>`)
             map.addLayer(polyline);
             polylines.push(polyline);
         }
