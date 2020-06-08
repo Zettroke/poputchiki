@@ -1,84 +1,131 @@
 {% extends 'base.html' %}
 
 {% block title %}
-   Publish path
+    Публикация маршрута
 {% endblock %}
 
 {% block head %}
     <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
     <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <style>
+    </style>
 {% endblock %}
 {% block content %}
 
-    <div id="map" style="width: 900px; height: 580px"></div>
+    <div style="display: flex; height: calc(100% - 64px)">
+        <div id="map" style="flex: 3; height: 100%"></div>
+        <div style="flex: 1; padding-left: 8px">
+            <h4>Публикация маршрута</h4>
+            <form id="input-form" method="post" action="{% url 'path_publish' %}">
+                <label for="time-input">Время отправления:</label><input id="time-input" name="start_at">
+                <input id="input-data" type="hidden" name="data">
+                <hr>
+                <div>Время в пути: <span id="travel-time">-</span></div>
+                <div>Дистанция: <span id="travel-distance">-</span></div>
+                <hr>
+                <div class="input-field col s12">
+                    <select id="transport-select">
+                      <option value="" disabled selected>Выберите ваш автомобиль</option>
+                      {% for tr in transports %}
+                        <option value="{{ tr.id }}">{{ tr.name }}</option>
+                      {% endfor %}
+                    </select>
+                    <label>Выбор автомобиля</label>
+                  </div>
+            <div>
+                <button id="submit-path" class="btn-large red" type="submit">Опубликовать<i class="material-icons right">send</i></button>
+            </div>
+            </form>
+        </div>
+    </div>
 
-    <form id="submit-path" action="{% url 'path_publish' %}" method="POST">
-        <input id="input-data" type="hidden" name="data" value="">
-        <button type="submit">submit path</button>
-    </form>
-
-<script>
-    let mapOptions = {
-        center: [55.75222, 37.6155600],
-        zoom: 10
-    };
-    let map = new L.map('map', mapOptions);
-    let layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-    map.addLayer(layer);
-
-    map.on("click", onMapClick);
-
-    const markers = {};
-    let marker_id = 0;
-    function onMapClick(e) {
-        let id = marker_id++;
-        let marker = new L.marker(e.latlng, { draggable: true, title: id+1+'' });
-        marker.on('dragend', () => {
-            buildPath();
-        });
-        marker.bindPopup(L.popup().setContent(`
-            <button onclick="removeMarker(${id})">remove</button>
-        `))
-        map.addLayer(marker);
-        markers[id] = marker;
-        buildPath();
-    }
-
-    function removeMarker(id) {
-        map.removeLayer(markers[id]);
-        delete markers[id];
-        buildPath();
-    }
-
-    function collectPath() {
-        return Object.values(markers).map(m => m.getLatLng()).map(m => ({lat: m.lat, lon: m.lng}));
-    }
-
-    let polyline;
-    let current_path;
-    async function buildPath() {
-        let path = collectPath();
-        if (path.length > 1) {
-            current_path = await postJsonQuery('{% url 'build_path' %}', path);
-            if (polyline) {
-                map.removeLayer(polyline);
+    <script>
+        const timepicker = $('#time-input').flatpickr({
+            enableTime: true,
+            dateFormat: 'Y-m-d H:i',
+            defaultDate: new Date(),
+            time_24hr: true,
+            minuteIncrement: 1,
+            onChange: () => {
+                buildPath()
             }
-            polyline = L.polyline(current_path.points.map(p => [p.lat, p.lon]), { color: 'red' })
+        })
+        let mapOptions = {
+            center: [55.75222, 37.6155600],
+            zoom: 10
+        };
+        let map = new L.map('map', mapOptions);
+        let layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+        map.addLayer(layer);
 
-            map.addLayer(polyline);
+        map.on("click", onMapClick);
+
+        const markers = {};
+        let marker_id = 0;
+
+        function onMapClick(e) {
+            let id = marker_id++;
+            let marker = new L.marker(e.latlng, {draggable: true, title: id + 1 + ''});
+            marker.on('dragend', () => {
+                buildPath();
+            });
+            marker.bindPopup(L.popup().setContent(`
+                <button onclick="removeMarker(${id})">remove</button>
+            `))
+            map.addLayer(marker);
+            markers[id] = marker;
+            buildPath();
         }
-    }
 
-    $('#submit-path').on('submit', e => {
-        if (current_path) {
+        function removeMarker(id) {
+            map.removeLayer(markers[id]);
+            delete markers[id];
+            buildPath();
+        }
+
+        function collectPath() {
+            return Object.values(markers).map(m => m.getLatLng()).map(m => ({lat: m.lat, lon: m.lng}));
+        }
+
+        let polyline;
+        let current_path;
+
+        async function buildPath() {
+            let path = collectPath();
+            if (path.length > 1) {
+                current_path = await postJsonQuery('{% url 'build_path' %}', path);
+                if (polyline) {
+                    map.removeLayer(polyline);
+                }
+                polyline = L.polyline(current_path.points.map(p => [p.lat, p.lon]), {color: 'red'})
+                $('#travel-time').text(formatPathTime(current_path.total_time));
+                $('#travel-distance').text(formatPathLen(current_path.total_distance));
+
+                map.addLayer(polyline);
+            } else {
+                if (polyline) {
+                    map.removeLayer(polyline);
+                }
+                $('#travel-time').text('-');
+            }
+        }
+        $('#input-form').on('keydown', e => {
+            if (e.key === 'Enter'){
+                e.preventDefault();
+            }
+        }).on('submit', e => {
             $('#input-data').val(JSON.stringify({
                 path: current_path.points,
-                starts_at: new Date().toISOString(),
-                ends_at: new Date().toISOString()
-            }));
-        } else {
-            e.preventDefault();
-        }
-    });
-</script>
+                starts_at: timepicker.selectedDates[0].toISOString(),
+                ends_at: timepicker.selectedDates[0].toISOString()
+            }))
+        });
+        $(window).on('load', () => {
+            $('#transport-select').formSelect();
+        })
+    </script>
 {% endblock %}

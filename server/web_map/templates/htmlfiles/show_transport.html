@@ -1,30 +1,74 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>my transport</title>
-	<style>
-    body 
-	  {
-      background: #000 url(https://images.hdqwalls.com/download/dark-blue-green-gradient-4k-i4-3840x2400.jpg);
-      color: #fff; 
-      }
-	</style>
-  </head>
- 
-  <body>
-  <h1>Transport</h1>
-  <ul id="navbar">
-      {% for tr in transports %}
-          <li>
-              model: {{ tr.model }} <br>
-              car number: {{ tr.car_number }} <br>
-              free place: {{ tr.place }} <br>
-              contact: {{ tr.contact }} <br>
-              comment: {{ tr.comment }}
-          </li>
-      {% endfor %}
-  </ul>
-  <a href="/main">Back to main page!<a>
-  </body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}
+Мой транспорт
+{% endblock title %}
+
+{% block head %}
+{% endblock head %} 
+
+{% block content %}
+    <div class="container">
+        <div style="display: flex; align-items: baseline">
+            <h2>Мой транспорт</h2><h6 style="padding-left: 16px">{{ transports.count }} штук</h6>
+        </div>
+        <hr style="margin-bottom: 32px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-around">
+        {% for tr in transports %}
+            <div class="card">
+                <div class="card-content card-title red white-text">
+                    {{ tr.name }}<i class="activator material-icons right" style="cursor: pointer; padding-top: 8px;">more_vert</i>
+                </div>
+                <div class="card-content" style="display: flex">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td>Модель</td>
+                                <td>{{ tr.model }}</td>
+                            </tr>
+                            <tr>
+                                <td>Номер машины</td>
+                                <td>{{ tr.car_number }}</td>
+                            </tr>
+                            <tr>
+                                <td>Количество свободных мест</td>
+                                <td>{{ tr.place }}</td>
+                            </tr>
+                            <tr>
+                                <td>Номер телефона</td>
+                                <td>{{ tr.contact }}</td>
+                            </tr>
+                            <tr>
+                                <td>Комментарий</td>
+                                <td>{{ tr.comment }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-reveal">
+                    <span class="card-title grey-text text-darken-4">{{ tr.name }}<i class="material-icons right">close</i></span>
+                    <hr style="margin-bottom: 16px">
+                    <button id="delete-user-path" class="btn red" onclick="deleteTransport({{ tr.id }})">Удалить</button>
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+
+        <div class="fixed-action-btn">
+          <a class="btn-floating btn-large red" href="{% url 'add_transport' %}">
+            <i class="large material-icons">add</i>
+          </a>
+        </div>
+    </div>
+    <script>
+        function deleteTransport(id) {
+            fetch('{% url 'delete_transport' %}' + '?id=' + id, {
+                method: 'DELETE'
+            }).then(resp => {
+                if (resp.redirected) {
+                    window.location.href = resp.url;
+                }
+            });
+        }
+    </script>
+{% endblock content %}

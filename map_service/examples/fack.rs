@@ -194,6 +194,7 @@ fn main() {
   ];
 
   let car_path = PlainMapCarPath {
+    id: 1,
     start_at: 0,
     path: points.iter().collect()
   };
