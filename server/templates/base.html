@@ -31,11 +31,35 @@
             });
         }
     </script>
+    <style>
+        a.nubex 
+        {
+        color: #fff;
+        user-select: none; 
+        text-decoration: none;	
+        outline: none; 
+        background-color: #fa8e47; 
+        padding: 1em 2em; 
+        }
+        a.nubex:active {
+        background-color: #ee6206;
+        }
+        a.nubex:hover {
+        background-color: #f97f2e; 
+        }
+    </style>
     {% block head %} {% endblock head %}
 </head>
 <body>
-<!-- Some header -->
+<h3>Map for your route<h3>
 {% block content %}{% endblock content %}
+<p></p>
+    <p></p>
+    <a href="#" class="nubex">Add a route</a>
+    <a href="#" class="nubex">Set a route</a>
+    <a href="#" class="nubex">Your account</a>
+    <p></p>
+    <p></p>
 <!-- Some footer -->
 </body>
 </html>
