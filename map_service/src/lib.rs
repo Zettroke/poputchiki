@@ -422,7 +422,7 @@ impl MapService {
       );
 
       path_result.total_time = prev_total_time + pr.total_time;
-      path_result.total_distance = prev_total_time + pr.total_distance;
+      path_result.total_distance = prev_total_distance + pr.total_distance;
 
       prev = curr;
     }

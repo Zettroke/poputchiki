@@ -13,22 +13,38 @@
 {% endblock %}
 {% block content %}
 
-    <div style="display: flex; height: 100%">
+    <div style="display: flex; height: calc(100% - 64px); max-height: calc(100% - 64px)">
         <div id="map" style="flex: 3; height: 100%"></div>
-        <div style="flex: 1; padding-left: 8px">
+        <div style="flex: 1; padding: 8px; overflow: auto; min-width: fit-content;">
             <h4>Поиск маршрута</h4>
 
             <label for="time-input">Время отправления:</label><input id="flatpickr">
             <input id="input-data" type="hidden" name="data">
             <hr>
-            <div>Время в пути: <span id="travel-time">-</span></div>
-            <div>Дистанция: <span id="travel-distance">-</span></div>
+            <div style="margin: 8px 0">
+                <div>Время в пути: <span id="travel-time">-</span></div>
+                <div>На машине: <span id="travel-time-car-part">-</span></div>
+            </div>
+            <div style="margin: 8px 0">
+                <div>Дистанция: <span id="travel-distance">-</span></div>
+                <div>На машине: <span id="travel-distance-car-part">-</span></div>
+            </div>
             <hr>
-{#            <button id="submit-path" class="btn-large red" type="submit">Опубликовать<i class="material-icons right">send</i></button>#}
+            <h5>Совместные фрагменты:</h5>
+            <div id="fragment-container">
+
+            </div>
         </div>
     </div>
+    <style>
+        .time-label {
+            padding: 5px;
+        }
+    </style>
 
 <script>
+
+    const fragments_container = $('#fragment-container');
     const flatpickr_object = $('#flatpickr').flatpickr({
         enableTime: true,
         dateFormat: "Y-m-d H:i",
@@ -135,6 +151,8 @@
 
             let path_id = current_path.points[0].path_id;
             let buff = [];
+            let ind = 0;
+            let fragment = {}
             for (const p of current_path.points) {
                 if (p.path_id === path_id) {
                     buff.push([p.lat, p.lon]);
@@ -144,7 +162,18 @@
                     );
                     buff = [[p.lat, p.lon]]
                     path_id = p.path_id;
+                    if (path_id) {
+                        fragment.path_id = path_id;
+                        fragment.start_time = current_path.eta_list[ind];
+                        fragment.start_distance = current_path.distance_list[ind];
+                    } else {
+                        fragment.end_time = current_path.eta_list[ind];
+                        fragment.end_distance = current_path.distance_list[ind];
+                        fragments.push(fragment);
+                        fragment = {};
+                    }
                 }
+                ind++;
             }
             if (buff.length) {
                 current_path_polylines.push(
@@ -152,6 +181,63 @@
                 );
             }
             current_path_polylines.forEach(l => map.addLayer(l));
+            $('#travel-time-car-part').text(formatPathTime(
+                fragments.reduce((acc, f) => acc + (f.end_time - f.start_time), 0)
+            ));
+            $('#travel-distance-car-part').text(formatPathLen(
+                fragments.reduce((acc, f) => acc + (f.end_distance - f.start_distance), 0)
+            ));
+            fragments_container.html('');
+            let res = '';
+            fragments.forEach(f => {
+                const path = result.car_paths.find(cp => cp.id == f.path_id);
+                if (path) {
+                    res += `
+                    <div class="card card-content" style="margin-bottom: 64px">
+                        <div style="display: flex; justify-content: space-between">
+                            <div class="green lighten-1 time-label">${formatPathTime(f.start_time)}</div>
+                            <div>Начало</div>
+                            <div class="red lighten-1 time-label">${formatPathLen(f.start_distance)}</div>
+                        </div>
+                        <table> <tbody>
+                            <tr>
+                                <td>Пользователь</td>
+                                <td>${path.user.username}</td>
+                            </tr>
+                            <tr>
+                                <td>Телефон</td>
+                                <td>${path.transport ? path.transport.contact : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Марка автомобиля</td>
+                                <td>${path.transport ? path.transport.model : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Номер автомобиля</td>
+                                <td>${path.transport ? path.transport.car_number : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Можно курить</td>
+                                <td>${path.transport ? (path.transport.can_smoke ? 'Да' : 'Нет') : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Можно музыку</td>
+                                <td>${path.transport ? (path.transport.can_play_music ? 'Да' : 'Нет') : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Можно с животными</td>
+                                <td>${path.transport ? (path.transport.animals_allowed ? 'Да' : 'Нет') : '-'}</td>
+                            </tr>
+                        </tbody></table>
+                        <div style="display: flex; justify-content: space-between">
+                            <div class="green lighten-1 time-label">${formatPathTime(f.end_time)}</div>
+                            <div>Конец</div>
+                            <div class="red lighten-1 time-label">${formatPathLen(f.end_distance)}</div>
+                        </div>
+                    </div>`
+                }
+            });
+            fragments_container.html(res);
 
             $('#travel-time').text(formatPathTime(current_path.total_time));
             $('#travel-distance').text(formatPathLen(current_path.total_distance));

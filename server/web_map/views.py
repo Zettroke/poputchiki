@@ -17,7 +17,8 @@ def index(req):
 
 @login_required
 def map_view(req):
-    return render(req, 'map_view.html', {'soma_data': 'kappa'})
+    transports = Transport.objects.filter(user=req.user)
+    return render(req, 'map_view.html', {'transports': transports})
 
 
 @csrf_exempt
@@ -77,7 +78,8 @@ def main(req):
 @csrf_exempt
 def path_publish(req: HttpRequest):
     if req.method == 'GET':
-        return render(req, 'map_view.html', {'transports': Transport.objects.all().filter(user=req.user)})
+        transports = Transport.objects.filter(user=req.user)
+        return render(req, 'map_view.html', {'transports': transports})
     elif req.method == 'POST':
         data = json.loads(req.POST['data'])
         path_points = [MapPoint(v.get('id', 0), v['lat'], v['lon']) for v in data['path']]

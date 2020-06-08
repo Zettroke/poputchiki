@@ -16,7 +16,7 @@
 {% endblock %}
 {% block content %}
 
-    <div style="display: flex; height: 100%">
+    <div style="display: flex; height: calc(100% - 64px)">
         <div id="map" style="flex: 3; height: 100%"></div>
         <div style="flex: 1; padding-left: 8px">
             <h4>Публикация маршрута</h4>
@@ -27,15 +27,18 @@
                 <div>Время в пути: <span id="travel-time">-</span></div>
                 <div>Дистанция: <span id="travel-distance">-</span></div>
                 <hr>
-                <label>
-                    Ваш транспорт
-                    <select name="transport_id">
-                        {% for tr in transports %}
-                            <option value="{{ tr.id }}">{{ tr.name }}</option>
-                        {% endfor %}
+                <div class="input-field col s12">
+                    <select id="transport-select">
+                      <option value="" disabled selected>Выберите ваш автомобиль</option>
+                      {% for tr in transports %}
+                        <option value="{{ tr.id }}">{{ tr.name }}</option>
+                      {% endfor %}
                     </select>
-                </label>
+                    <label>Выбор автомобиля</label>
+                  </div>
+            <div>
                 <button id="submit-path" class="btn-large red" type="submit">Опубликовать<i class="material-icons right">send</i></button>
+            </div>
             </form>
         </div>
     </div>
@@ -121,5 +124,8 @@
                 ends_at: timepicker.selectedDates[0].toISOString()
             }))
         });
+        $(window).on('load', () => {
+            $('#transport-select').formSelect();
+        })
     </script>
 {% endblock %}
