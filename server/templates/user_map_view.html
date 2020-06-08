@@ -7,26 +7,65 @@
 {% block head %}
     <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
     <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 {% endblock %}
 {% block content %}
 
-    <div id="map" style="width: 900px; height: 580px"></div>
-<input id="date" type="date">
-<input id="time" type="time">
+    <div style="display: flex; height: calc(100% - 64px); max-height: calc(100% - 64px)">
+        <div id="map" style="flex: 3; height: 100%"></div>
+        <div style="flex: 1; padding: 8px; overflow: auto; min-width: fit-content;">
+            <h4>Поиск маршрута</h4>
+
+            <label for="time-input">Время отправления:</label><input id="flatpickr">
+            <input id="input-data" type="hidden" name="data">
+            <hr>
+            <div style="margin: 8px 0">
+                <div>Время в пути: <span id="travel-time">-</span></div>
+                <div>На машине: <span id="travel-time-car-part">-</span></div>
+            </div>
+            <div style="margin: 8px 0">
+                <div>Дистанция: <span id="travel-distance">-</span></div>
+                <div>На машине: <span id="travel-distance-car-part">-</span></div>
+            </div>
+            <hr>
+            <h5>Совместные фрагменты:</h5>
+            <div id="fragment-container">
+
+            </div>
+        </div>
+    </div>
+    <style>
+        .time-label {
+            padding: 5px;
+        }
+    </style>
 
 <script>
-    const date_input = $('#date');
-    const time_input = $('#time');
+
+    const fragments_container = $('#fragment-container');
+    const flatpickr_object = $('#flatpickr').flatpickr({
+        enableTime: true,
+        dateFormat: "Y-m-d H:i",
+        defaultDate: new Date(),
+        time_24hr: true,
+        minuteIncrement: 1,
+        onChange: () => {
+            buildPath()
+        }
+    });
+
     let colors = [
-        '#FF6633', '#FF33FF', '#00B3E6', '#E6B333',
-        '#3366E6', '#B34D4D', '#E6B3B3', '#6680B3',
-        '#FF1A66', '#E6331A', '#66994D', '#B366CC',
-        '#4D8000', '#B33300', '#66664D', '#991AFF',
-        '#4DB3FF', '#1AB399', '#E666B3', '#33991A',
-        '#809980', '#999933', '#FF3380', '#4D80CC',
-        '#9900B3', '#E64D66', '#FF4D4D', '#99E6E6',
-        '#6666FF'
+        '#b71c1c', '#880e4f', '#4a148c', '#311b92',
+        '#1a237e', '#01579b', '#827717', '#1b5e20',
+        '#FF1A66', '#f57f17', '#66994D', '#B366CC',
+        '#4D8000', '#B33300', '#e65100', '#4db3ff',
+        '#1ab399', '#E666B3', '#33991A', '#999933',
+        '#FF3380', '#4D80CC', '#9900B3', '#E64D66',
+        '#FF4D4D', '#6666FF'
     ].sort(() => Math.random() - 0.5);
+
     let mapOptions = {
         center: [55.75222, 37.6155600],
         zoom: 10
@@ -90,25 +129,31 @@
 
     let current_path_polylines = []
     let current_path;
+
+    let fragments = [];
     async function buildPath() {
         let path = collectPath();
         if (path.length > 1) {
+
             let form = new FormData();
-            let date = new Date(date_input.val() + ' ' + time_input.val());
-            form.append('start_at', date.toISOString());
+            form.append('start_at', flatpickr_object.selectedDates[0].toISOString());
             form.append('points', JSON.stringify(path));
 
             let result = await (await fetch('{% url 'build_user_path' %}', {
                 method: 'POST',
                 body: form
             })).json();
+            current_path = result.path;
 
             current_path_polylines.forEach(l => map.removeLayer(l));
             current_path_polylines = [];
+            fragments = [];
 
-            let path_id = result.path.points[0].path_id;
+            let path_id = current_path.points[0].path_id;
             let buff = [];
-            for (const p of result.path.points) {
+            let ind = 0;
+            let fragment = {}
+            for (const p of current_path.points) {
                 if (p.path_id === path_id) {
                     buff.push([p.lat, p.lon]);
                 } else {
@@ -117,7 +162,18 @@
                     );
                     buff = [[p.lat, p.lon]]
                     path_id = p.path_id;
+                    if (path_id) {
+                        fragment.path_id = path_id;
+                        fragment.start_time = current_path.eta_list[ind];
+                        fragment.start_distance = current_path.distance_list[ind];
+                    } else {
+                        fragment.end_time = current_path.eta_list[ind];
+                        fragment.end_distance = current_path.distance_list[ind];
+                        fragments.push(fragment);
+                        fragment = {};
+                    }
                 }
+                ind++;
             }
             if (buff.length) {
                 current_path_polylines.push(
@@ -125,16 +181,69 @@
                 );
             }
             current_path_polylines.forEach(l => map.addLayer(l));
+            $('#travel-time-car-part').text(formatPathTime(
+                fragments.reduce((acc, f) => acc + (f.end_time - f.start_time), 0)
+            ));
+            $('#travel-distance-car-part').text(formatPathLen(
+                fragments.reduce((acc, f) => acc + (f.end_distance - f.start_distance), 0)
+            ));
+            fragments_container.html('');
+            let res = '';
+            fragments.forEach(f => {
+                const path = result.car_paths.find(cp => cp.id == f.path_id);
+                if (path) {
+                    res += `
+                    <div class="card card-content" style="margin-bottom: 64px">
+                        <div style="display: flex; justify-content: space-between">
+                            <div class="green lighten-1 time-label">${formatPathTime(f.start_time)}</div>
+                            <div>Начало</div>
+                            <div class="red lighten-1 time-label">${formatPathLen(f.start_distance)}</div>
+                        </div>
+                        <table> <tbody>
+                            <tr>
+                                <td>Пользователь</td>
+                                <td>${path.user.username}</td>
+                            </tr>
+                            <tr>
+                                <td>Телефон</td>
+                                <td>${path.transport ? path.transport.contact : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Марка автомобиля</td>
+                                <td>${path.transport ? path.transport.model : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Номер автомобиля</td>
+                                <td>${path.transport ? path.transport.car_number : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Можно курить</td>
+                                <td>${path.transport ? (path.transport.can_smoke ? 'Да' : 'Нет') : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Можно музыку</td>
+                                <td>${path.transport ? (path.transport.can_play_music ? 'Да' : 'Нет') : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Можно с животными</td>
+                                <td>${path.transport ? (path.transport.animals_allowed ? 'Да' : 'Нет') : '-'}</td>
+                            </tr>
+                        </tbody></table>
+                        <div style="display: flex; justify-content: space-between">
+                            <div class="green lighten-1 time-label">${formatPathTime(f.end_time)}</div>
+                            <div>Конец</div>
+                            <div class="red lighten-1 time-label">${formatPathLen(f.end_distance)}</div>
+                        </div>
+                    </div>`
+                }
+            });
+            fragments_container.html(res);
+
+            $('#travel-time').text(formatPathTime(current_path.total_time));
+            $('#travel-distance').text(formatPathLen(current_path.total_distance));
         }
     }
 
     requestPaths();
-
-    let d = new Date();
-    date_input.val(d.toISOString().substr(0, 10));
-    time_input.val(d.toTimeString().substr(0, 8));
-
-    date_input.change(buildPath);
-    time_input.change(buildPath);
 </script>
 {% endblock %}

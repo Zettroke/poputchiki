@@ -207,6 +207,7 @@ version = "0.1.0"
 dependencies = [
  "env_logger",
  "flate2",
+ "lazy_static",
  "log",
  "pyo3",
  "quick-xml",

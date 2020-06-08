@@ -18,10 +18,12 @@ class MapPoint:
 
 
 class MapCarPath:
+    id: int
     start_at: int
     path: List[MapPoint]
 
-    def __init__(self, start_at, path):
+    def __init__(self, id, start_at, path):
+        self.id = id
         self.start_at = start_at
         self.path = path
 
